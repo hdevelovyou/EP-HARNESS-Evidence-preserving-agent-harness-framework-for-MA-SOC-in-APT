@@ -1,0 +1,36 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime Outputs & Scratch
+runs/
+eval_reports/
+soc_hunt_results.json
+soc_hunt_result.json
+FINAL_REPORT_SOC.md
+tmp/
+
+# Local test/utility scripts, internal docs & legacy root duplicates
+model_check.py
+unit_tests.py
+/extractor.py
+/Final_Report
+/ep_documents/

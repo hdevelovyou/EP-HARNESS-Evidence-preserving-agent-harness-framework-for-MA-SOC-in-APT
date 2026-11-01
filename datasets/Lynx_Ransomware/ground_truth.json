@@ -1,0 +1,58 @@
+{
+  "case_name": "Lynx_Ransomware_Cats_Got_Your_Files",
+  "T_expert": [
+    "T1078.003 - Domain Accounts",
+    "T1133 - External Remote Services",
+    "T1059.001 - PowerShell",
+    "T1059.003 - Windows Command Shell",
+    "T1136.002 - Domain Account",
+    "T1543.003 - Windows Service",
+    "T1098.007 - Additional Local or Domain Groups",
+    "T1087.001 - Local Account",
+    "T1046 - Network Service Discovery",
+    "T1135 - Network Share Discovery",
+    "T1057 - Process Discovery",
+    "T1012 - Query Registry",
+    "T1018 - Remote System Discovery",
+    "T1082 - System Information Discovery",
+    "T1016 - System Network Configuration Discovery",
+    "T1021.001 - Remote Desktop Protocol",
+    "T1560.001 - Archive via Utility",
+    "T1219.002 - Remote Desktop Software",
+    "T1567 - Exfiltration Over Web Service",
+    "T1486 - Data Encrypted for Impact",
+    "T1490 - Inhibit System Recovery"
+  ],
+  "I_expert": {
+    "atomic": [
+      "195.211.190[.]189:3389",
+      "77.90.153[.]30:3389"
+    ],
+    "computed": [
+      {
+        "file": "netscan.exe",
+        "hashes": [
+          "3073af95dfc18361caebccd69d0021a2",
+          "efe8b9ff7ff93780c9162959a4c1e5ecf6e840a4",
+          "517288e12c05a92e483e6d80b9136c19bc58c46851720680bb6d1b7016034c37"
+        ]
+      },
+      {
+        "file": "nxc.exe",
+        "hashes": [
+          "7532ff90145b8c59dc9440bf43dc87a5",
+          "2b4b11d3ecffd82ed44db652cdd65733224f8e34",
+          "6285d32a9491a0084da85a384a11e15e203badf67b1deed54155f02b7338b108"
+        ]
+      },
+      {
+        "file": "w.exe",
+        "hashes": [
+          "e2179046b86deca297ebf7398b95e438",
+          "3e01df0155a539fe6d802ee9e9226d8c77fd96c9",
+          "07b36c1660deb223749a8ac151676d8924bc13aa59e6712a3c14a2df5237264a"
+        ]
+      }
+    ]
+  }
+}

