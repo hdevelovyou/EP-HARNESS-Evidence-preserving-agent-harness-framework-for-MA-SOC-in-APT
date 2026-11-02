@@ -1,20 +1,22 @@
-# Evidence claims do agent tự trích (cited claims)
+# Agent-cited evidence claims
 
-Trạng thái: **đã cài đặt** (`ep_harness/claim_parser.py`, `ep_harness/inline.py`, `prompts/agent_prompts.py`, `main.py`);
-test không gọi LLM: `tests/test_cited_claims.py`. Chưa chạy với LLM thật, nên chưa biết model tuân thủ khuôn dạng tốt đến đâu.
+Status: **implemented** (`ep_harness/claim_parser.py`, `ep_harness/inline.py`, `prompts/agent_prompts.py`, `main.py`);
+tests without LLM calls: `tests/test_cited_claims.py`. Not yet run with a real LLM, so how well models follow the
+format is still unknown.
 
-## Bật
+## Enabling
 
 ```bash
 ENABLE_CONTRACT_GATE=1 ENABLE_CITED_CLAIMS=1 python main.py ...
 ```
 
-`ENABLE_CITED_CLAIMS=1` mà không bật gate sẽ báo lỗi ngay khi nạp cấu hình: chỉ có gate inline đọc và kiểm khối claim.
-Tắt cờ này thì prompt giữ nguyên như MA-SOC, gate dùng claim suy ra từ văn bản (`derived`).
+`ENABLE_CITED_CLAIMS=1` without the gate fails as soon as the configuration loads: only the inline gate reads and
+checks the claims block. With the flag off, prompts are unchanged from MA-SOC and the gate uses claims derived from
+free text (`derived`).
 
-## Khuôn dạng agent phải xuất
+## Format agents must emit
 
-Hunter và Analyst kết thúc câu trả lời bằng **đúng một** khối:
+The Hunter and the Analyst end their answer with **exactly one** block:
 
 ````
 ```evidence_claims
@@ -23,45 +25,48 @@ Hunter và Analyst kết thúc câu trả lời bằng **đúng một** khối:
 ```
 ````
 
-| Trường | Hunter | Analyst | Ánh xạ sang capsule |
+| Field | Hunter | Analyst | Mapping to the capsule |
 |---|---|---|---|
-| `id` | bắt buộc | bắt buộc, khớp thẻ `[cN]` trong văn bản | `claim_id` (`C2`, `2` → `c2`) |
-| `text`, `level` | bắt buộc | bắt buộc | giữ nguyên; level viết hoa |
-| `event_ids` | event trong task log | event trong evidence | `event_ids` |
-| `tools` | tool trong Tool Execution Audit | — | `artifact_ids` của task; tool không chạy thành công → ID không tồn tại → C3 REJECTED |
-| `parent_claims` | — | ref claim VERIFIED, dạng `CAP-T7-VERIFIED-a1#c1` | `parent_claims`; `derivation` mặc định theo số cha |
-| `observables` | giá trị chép nguyên văn từ event | như Hunter | `observables` → R3 |
+| `id` | required | required, matches the `[cN]` tag in the text | `claim_id` (`C2`, `2` → `c2`) |
+| `text`, `level` | required | required | kept as is; level upper-cased |
+| `event_ids` | events in the task log | events in the evidence | `event_ids` |
+| `tools` | tools in the Tool Execution Audit | — | the task's `artifact_ids`; a tool that did not run successfully → an ID that does not exist → C3 REJECTED |
+| `parent_claims` | — | refs of VERIFIED claims, e.g. `CAP-T7-VERIFIED-a1#c1` | `parent_claims`; `derivation` defaults from the number of parents |
+| `observables` | values copied verbatim from the events | as for the Hunter | `observables` → R3 |
 
-Analyst còn phải gắn thẻ `[cN]` ở cuối mỗi dòng phân tích (kể cả dòng bảng). Danh sách claim VERIFIED kèm ref
-được đưa vào input của Analyst (`lean_results[].claims`), và hợp đồng được nối vào evidence context của Analyst.
+The Analyst must also tag the end of every analysis line (table rows included) with `[cN]`. The list of VERIFIED
+claims with their refs is added to the Analyst's input (`lean_results[].claims`), and the contract is appended to the
+Analyst's evidence context.
 
-## Parser và gate chia việc thế nào
+## How the parser and the gate split the work
 
-- Parser (`claim_parser.py`) dễ dãi về hình dạng, không phán xét: JSON → `Claim` với `lineage = "cited"`.
-  Thiếu khối hoặc JSON hỏng → không có claim, kèm một ghi chú lỗi.
-- Gate quyết định mọi thứ như cũ: ID event/tool/claim cha bịa → C3 REJECTED; observable không có trong event → R3;
-  level vượt claim cha mà không có event riêng → R4; thiếu khối → C2 `too_few_claims` + ghi chú `[format]` trong feedback.
-- Khi bị chặn, ghi chú `[format]` hoặc vi phạm ở cấp claim cho phép Analyst được gọi lại (`retryable`).
+- The parser (`claim_parser.py`) is lenient about shape and judges nothing: JSON → `Claim` with `lineage = "cited"`.
+  A missing block or broken JSON → no claims, plus an error note.
+- The gate decides everything as before: fabricated event/tool/parent-claim IDs → C3 REJECTED; an observable not in
+  the event → R3; a level above the parent claims without own events → R4; a missing block → C2 `too_few_claims`
+  plus a `[format]` note in the feedback.
+- When blocked, a `[format]` note or a claim-level violation lets the Analyst be called again (`retryable`).
 
-## Analyst → Reporter ở chế độ cited
+## Analyst → Reporter in cited mode
 
-Reporter nhận phần tường thuật **đã bỏ khối claim và thẻ `[cN]`**. Nếu ANALYSIS bị chặn, các dòng gắn thẻ của claim
-vi phạm bị loại trước. `analyst_result.md` giữ nguyên bản gốc (có khối và thẻ). Summarizer nhận output Hunter đã bỏ
-khối claim, nên artifact tóm tắt giữ nguyên dạng cũ.
+The Reporter receives the narrative **without the claims block and the `[cN]` tags**. If the ANALYSIS is blocked,
+the lines tagged with a violating claim are removed first. `analyst_result.md` keeps the original (with block and
+tags). The summarizer receives the Hunter output without the claims block, so the summary artifact keeps its old shape.
 
-## Thay đổi kèm theo
+## Related changes
 
-- `split_tool_audit` dùng `raw_decode`: văn bản nối sau Tool Execution Audit (ví dụ kết luận Debate Judge) không còn
-  làm hỏng việc đọc audit (trước đây audit rỗng → C4 sai).
-- Adapter shadow (`audit` CLI) tự dùng khối claim nếu output có, ngược lại vẫn suy ra từ văn bản.
+- `split_tool_audit` uses `raw_decode`: text appended after the Tool Execution Audit (for example a Debate Judge
+  resolution) no longer breaks reading the audit (it used to yield an empty audit → a false C4).
+- The shadow adapter (`audit` CLI) uses the claims block when the output has one, and otherwise still derives claims
+  from the text.
 
-## Giới hạn đã biết
+## Known limits
 
-- Dòng tường thuật **không gắn thẻ** của Analyst vẫn đến Reporter mà không được kiểm.
-- Verifier chưa xuất claim: VERIFIED vẫn mang tiếp (CARRIED) toàn bộ claim của FINDING; Verifier chưa loại claim
-  có khai báo (`dropped_claims`).
-- Reporter không xuất khối claim (để không đổi định dạng `FINAL_REPORT_SOC.md` mà evaluator đọc); cạnh
-  Reporter → output vẫn chỉ ghi nhận.
-- Không có bước kiểm ngữ nghĩa: claim trích đúng event nhưng diễn giải sai vẫn qua gate.
-- Một FINDING không có khối claim sẽ bị chặn cho đến khi hết retry; nếu model hay quên khối, tỉ lệ `Gate_Blocked`
-  sẽ tăng. Cần đo trên run thật trước khi so sánh chất lượng.
+- **Untagged** Analyst narrative lines still reach the Reporter unchecked.
+- The Verifier does not emit claims yet: VERIFIED still carries (CARRIED) every FINDING claim; the Verifier does not
+  declare dropped claims (`dropped_claims`).
+- The Reporter does not emit a claims block (so the `FINAL_REPORT_SOC.md` format read by the evaluator does not
+  change); the Reporter → output edge is still only recorded.
+- There is no semantic check: a claim citing the right event but misreading it still passes the gate.
+- A FINDING without a claims block is blocked until retries run out; if a model often forgets the block, the
+  `Gate_Blocked` rate will rise. Measure this on real runs before comparing quality.

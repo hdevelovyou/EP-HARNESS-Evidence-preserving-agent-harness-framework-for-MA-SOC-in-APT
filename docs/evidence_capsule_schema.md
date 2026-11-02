@@ -1,130 +1,133 @@
-# Evidence Capsule — đặc tả schema v0.2
+# Evidence Capsule — schema v0.2 specification
 
-Trạng thái: **đã cài đặt** trong `ep_harness/capsule.py`, `ep_harness/gate.py`, `ep_harness/ledger.py`;
-bản máy đọc: `ep_harness/schemas/evidence_capsule.v0.2.json`; test: `tests/test_capsule_schema.py`.
-Các quy tắc đánh dấu *(đề xuất)* là lựa chọn thiết kế, cần đánh giá thực nghiệm trước khi khẳng định hiệu quả.
+Status: **implemented** in `ep_harness/capsule.py`, `ep_harness/gate.py`, `ep_harness/ledger.py`;
+machine-readable form: `ep_harness/schemas/evidence_capsule.v0.2.json`; tests: `tests/test_capsule_schema.py`.
+Rules marked *(proposed)* are design choices that need empirical evaluation before any claim about their effect.
 
-## 1. Vai trò
+## 1. Role
 
-Evidence Capsule là đối tượng duy nhất được đi qua ranh giới giữa hai agent. Agent không bàn giao văn bản tự do
-mà bàn giao một tập **claim**, mỗi claim gắn với bằng chứng (event, artifact của tool, hoặc claim của capsule cha).
-Capsule chỉ mô tả *hình thức* và *tham chiếu*; việc bằng chứng có thật sự hỗ trợ claim về mặt ngữ nghĩa hay không
-thuộc về Verifier và Output Evidence Guardrail, không thuộc schema hay Contract Gate.
+The Evidence Capsule is the only object allowed to cross the boundary between two agents. An agent does not hand
+over free text but a set of **claims**, each tied to evidence (an event, a tool artifact, or a claim of a parent capsule).
+The capsule only describes *form* and *references*; whether the evidence semantically supports a claim belongs to
+the Verifier and the Output Evidence Guardrail, not to the schema or the Contract Gate.
 
-## 2. Định nghĩa
+## 2. Definitions
 
-Gọi `E` là tập event telemetry trong Evidence Ledger, `A` là tập artifact (mỗi lần chạy tool), `K` là tập capsule đã ghi.
+Let `E` be the set of telemetry events in the Evidence Ledger, `A` the set of artifacts (one per tool run), and `K` the set of recorded capsules.
 
 **Capsule** `k = (id, kind, task, src, dst, attempt, supersedes, P, C, D, tools, meta)`:
 
-| Trường | Kiểu | Ý nghĩa |
+| Field | Type | Meaning |
 |---|---|---|
-| `schema_version` | `"0.2"` | Phiên bản schema |
-| `capsule_id` | `CAP-[A-Za-z0-9_.:-]+` | Định danh duy nhất; nội dung gắn với ID là bất biến (ledger kiểm hash) |
-| `kind` | TASK, FINDING, VERIFIED, ANALYSIS, REPORT | Loại handoff, chọn hợp đồng của cạnh |
-| `task_id` | chuỗi | Task trong catalog (T1–T30, hoặc REPORT) |
-| `source`, `dest` | agent / `output` | Cạnh handoff; phải có trong Contract Registry |
-| `attempt` | số nguyên ≥ 1 | Lần thử thứ mấy của cùng task |
-| `supersedes` | `capsule_id` \| null | Capsule bị thay thế; có khi và chỉ khi `attempt > 1` |
-| `parent_capsules` (P) | danh sách `capsule_id` | Capsule cha mà capsule này dựa vào |
-| `claims` (C) | danh sách claim | Nội dung bàn giao |
-| `dropped_claims` (D) | danh sách `{ref, reason, note}` | Claim cha **cố ý không mang tiếp**, kèm lý do |
-| `tools_used` | danh sách tên tool | Tool agent khai đã dùng |
-| `status` | luôn `PROPOSED` | Agent chỉ được đề xuất; trạng thái thật nằm trong ledger |
-| `metadata` | object | Thông tin phụ, không dùng để ra quyết định |
+| `schema_version` | `"0.2"` | Schema version |
+| `capsule_id` | `CAP-[A-Za-z0-9_.:-]+` | Unique identifier; the content bound to an ID is immutable (the ledger checks its hash) |
+| `kind` | TASK, FINDING, VERIFIED, ANALYSIS, REPORT | Handoff type; selects the edge contract |
+| `task_id` | string | Task in the catalog (T1–T30, or REPORT) |
+| `source`, `dest` | agent / `output` | Handoff edge; must exist in the Contract Registry |
+| `attempt` | integer ≥ 1 | Which attempt of the same task this is |
+| `supersedes` | `capsule_id` \| null | The capsule being replaced; set if and only if `attempt > 1` |
+| `parent_capsules` (P) | list of `capsule_id` | Parent capsules this capsule builds on |
+| `claims` (C) | list of claims | The content handed over |
+| `dropped_claims` (D) | list of `{ref, reason, note}` | Parent claims **deliberately not carried**, with a reason |
+| `tools_used` | list of tool names | Tools the agent declares it used |
+| `status` | always `PROPOSED` | Agents may only propose; the actual status lives in the ledger |
+| `metadata` | object | Side information, never used for decisions |
 
 **Claim** `c = (cid, text, level, Ev, Ar, Pc, derivation, Obs, ttp, lineage)`:
 
-| Trường | Ý nghĩa |
+| Field | Meaning |
 |---|---|
-| `claim_id` | `c1`, `c2`, … duy nhất trong capsule. Tham chiếu toàn cục: `CAP-…#c1` |
-| `text` | Mệnh đề của claim, không rỗng |
-| `level` | OBSERVED / INFERRED / HYPOTHESIS (mục 3) |
-| `event_ids` (Ev ⊆ E) | Event telemetry được trích |
-| `artifact_ids` (Ar ⊆ A) | Kết quả tool được trích |
-| `parent_claims` (Pc) | Tham chiếu tới claim trong các capsule thuộc P |
-| `derivation` | Quan hệ với claim cha: NEW / CARRIED / REFINED / AGGREGATED (mục 4) |
-| `observables` (Obs) | Giá trị nguyên văn mà claim dựa vào (domain, IP, hash, đoạn command line…) |
-| `ttp_candidates` | ID ATT&CK do agent đề xuất, định dạng `Txxxx[.xxx]` |
-| `lineage` | `cited` (agent tự trích ID) / `derived` (harness khớp observable để suy ra) |
+| `claim_id` | `c1`, `c2`, … unique within the capsule. Global reference: `CAP-…#c1` |
+| `text` | The claim's statement, non-empty |
+| `level` | OBSERVED / INFERRED / HYPOTHESIS (section 3) |
+| `event_ids` (Ev ⊆ E) | Cited telemetry events |
+| `artifact_ids` (Ar ⊆ A) | Cited tool results |
+| `parent_claims` (Pc) | References to claims in capsules of P |
+| `derivation` | Relation to parent claims: NEW / CARRIED / REFINED / AGGREGATED (section 4) |
+| `observables` (Obs) | Verbatim values the claim rests on (domain, IP, hash, command-line fragment…) |
+| `ttp_candidates` | ATT&CK IDs proposed by the agent, format `Txxxx[.xxx]` |
+| `lineage` | `cited` (the agent named the IDs) / `derived` (the harness inferred them by matching observables) |
 
-Tham chiếu của claim là `refs(c) = Ev ∪ Ar ∪ Pc`. Claim *có neo* (anchored) khi `refs(c) ≠ ∅`.
+The references of a claim are `refs(c) = Ev ∪ Ar ∪ Pc`. A claim is *anchored* when `refs(c) ≠ ∅`.
 
-## 3. Mức nhận thức (level)
+## 3. Epistemic level
 
-| Level | Điều kiện hình thức (gate kiểm) | Diễn giải |
+| Level | Formal condition (checked by the gate) | Interpretation |
 |---|---|---|
-| OBSERVED | `|Ev| ≥ 1` (R1) | Nội dung thấy trực tiếp trong event được trích |
-| INFERRED | `|Ev| ≥ 1` hoặc `|Pc| ≥ 1` (R1) | Suy ra từ event và/hoặc claim cha đã chấp nhận, không thấy trực tiếp trong một event |
-| HYPOTHESIS | không | Giả thuyết; được đi tiếp nhưng **không** được vào báo cáo cuối như phát hiện (R2 trên cạnh REPORT) |
+| OBSERVED | `|Ev| ≥ 1` (R1) | Directly visible in the cited events |
+| INFERRED | `|Ev| ≥ 1` or `|Pc| ≥ 1` (R1) | Follows from events and/or accepted parent claims, not directly visible in a single event |
+| HYPOTHESIS | none | A hypothesis; may travel on but may **not** enter the final report as a finding (R2 on the REPORT edge) |
 
-Thứ hạng: HYPOTHESIS < INFERRED < OBSERVED. Điều kiện trên là *cần*, không *đủ*: claim OBSERVED trích một event
-không liên quan vẫn qua R1; phát hiện điều đó là việc kiểm tra ngữ nghĩa.
+Ranking: HYPOTHESIS < INFERRED < OBSERVED. These conditions are *necessary*, not *sufficient*: an OBSERVED claim
+citing an unrelated event still passes R1; catching that is a semantic check.
 
-*So với v0.1:* INFERRED trước đây chỉ cần capsule có cha; nay phải trích **claim cha cụ thể**. Điều này cho phép
-truy vết từng claim qua handoff thay vì chỉ theo capsule.
+*Compared with v0.1:* INFERRED used to need only a capsule with parents; it must now cite **specific parent claims**.
+This makes it possible to trace each claim across handoffs instead of only each capsule.
 
-## 4. Quan hệ với claim cha (derivation)
+## 4. Relation to parent claims (derivation)
 
-| Derivation | Số claim cha tối thiểu | Ý nghĩa |
+| Derivation | Minimum parent claims | Meaning |
 |---|---|---|
-| NEW | 0 (và phải bằng 0) | Claim bắt đầu tại capsule này |
-| CARRIED | 1 | Mang tiếp nguyên mệnh đề |
-| REFINED | 1 | Thu hẹp, chính xác hoá hoặc sửa claim cha |
-| AGGREGATED | 2 | Mệnh đề mới kết hợp nhiều claim cha |
+| NEW | 0 (and must be 0) | The claim starts in this capsule |
+| CARRIED | 1 | The same statement forwarded unchanged |
+| REFINED | 1 | Narrows, sharpens or corrects a parent claim |
+| AGGREGATED | 2 | A new statement combining several parent claims |
 
-**Quy tắc không khuếch đại (R4)** *(đề xuất)*: đặt `ceil(c) = max rank(level(p))` trên các claim cha `p ∈ Pc`.
-Vi phạm khi `rank(level(c)) > ceil(c)` và (`derivation = CARRIED` hoặc `Ev = ∅`). Nghĩa là claim chỉ được mạnh hơn
-claim cha khi tự trích thêm event, và claim CARRIED không bao giờ được nâng mức. Hạ mức luôn được phép.
+**No-escalation rule (R4)** *(proposed)*: let `ceil(c) = max rank(level(p))` over parent claims `p ∈ Pc`.
+A violation occurs when `rank(level(c)) > ceil(c)` and (`derivation = CARRIED` or `Ev = ∅`). In other words, a claim
+may be stronger than its parents only if it cites events of its own, and a CARRIED claim may never be upgraded.
+Downgrading is always allowed.
 
-**Claim bị loại** *(đề xuất)*: claim cha không được tham chiếu bởi claim con nào phải hoặc nằm trong `dropped_claims`
-với lý do REFUTED / INSUFFICIENT_EVIDENCE / DUPLICATE / OUT_OF_SCOPE, hoặc bị coi là **mất im lặng**.
-Lọc có khai báo được ghi lại trong ledger, không xoá; mất im lặng là một dạng suy giảm bằng chứng cần đo.
-Hiện gate chỉ kiểm tính hợp lệ của khai báo; việc *bắt buộc* khai báo mọi claim cha chưa bật trên cạnh nào.
+**Dropped claims** *(proposed)*: a parent claim that no child claim references must either appear in `dropped_claims`
+with reason REFUTED / INSUFFICIENT_EVIDENCE / DUPLICATE / OUT_OF_SCOPE, or it counts as **silently lost**.
+Declared filtering is recorded in the ledger, not deleted; silent loss is a form of evidence degradation to be measured.
+The gate currently only checks that declarations are valid; *requiring* every parent claim to be declared is not
+enabled on any edge yet.
 
-## 5. Trạng thái xử lý
+## 5. Processing status
 
-Capsule do agent tạo luôn ở `PROPOSED`. Mọi thay đổi trạng thái là một bản ghi `decision` trong ledger
-(`from`, `to`, `actor`, `violations`, `detail`); ledger từ chối chuyển trạng thái không hợp lệ.
+A capsule created by an agent is always `PROPOSED`. Every status change is a `decision` record in the ledger
+(`from`, `to`, `actor`, `violations`, `detail`); the ledger refuses invalid transitions.
 
-| Từ | Sang | Ai được quyết định |
+| From | To | Who may decide |
 |---|---|---|
-| PROPOSED | ACCEPTED, RETRY_REQUIRED, REJECTED | `contract_gate` (kiểm tra hình thức) |
+| PROPOSED | ACCEPTED, RETRY_REQUIRED, REJECTED | `contract_gate` (form check) |
 | ACCEPTED, REVIEW_REQUIRED | ACCEPTED | `verifier`, `output_guardrail`, `human_analyst` |
-| ACCEPTED, REVIEW_REQUIRED | REVIEW_REQUIRED, REJECTED, UNRESOLVED | trên + `policy_orchestrator` |
-| RETRY_REQUIRED, REJECTED, UNRESOLVED | — | Trạng thái cuối |
+| ACCEPTED, REVIEW_REQUIRED | REVIEW_REQUIRED, REJECTED, UNRESOLVED | the above + `policy_orchestrator` |
+| RETRY_REQUIRED, REJECTED, UNRESOLVED | — | Terminal |
 
-Bất biến:
-- Agent không tự ACCEPT: capsule gửi lên với `status ≠ PROPOSED` bị REJECTED (C1).
-- Không actor nào quyết định trên capsule do chính mình tạo (`actor ≠ source`).
-- Policy Orchestrator chỉ được dừng hoặc chuyển xem xét, không bao giờ ACCEPT (không ép thêm kết luận).
-- Thử lại = capsule mới với `attempt + 1` và `supersedes` trỏ về capsule cũ đã ở trạng thái cuối
-  (RETRY_REQUIRED, REJECTED hoặc UNRESOLVED), cùng `task_id`, `kind`, `source`; mỗi capsule chỉ được thay thế
-  một lần; capsule ACCEPTED không được thay thế (C3). Capsule cũ vẫn nằm trong ledger.
-- `ACCEPTED` sau gate nghĩa là "đạt hình thức"; quyết định ngữ nghĩa tiếp theo được ghi thành decision riêng
-  với actor tương ứng, nên luôn phân biệt được hai tầng.
+Invariants:
+- Agents never self-accept: a capsule submitted with `status ≠ PROPOSED` is REJECTED (C1).
+- No actor decides on a capsule it created (`actor ≠ source`).
+- The Policy Orchestrator may only stop or escalate for review, never ACCEPT (it never forces a conclusion).
+- A retry is a new capsule with `attempt + 1` and `supersedes` pointing at the old capsule in a terminal status
+  (RETRY_REQUIRED, REJECTED or UNRESOLVED), with the same `task_id`, `kind` and `source`; each capsule can be
+  superseded only once, and an ACCEPTED capsule cannot be superseded (C3). The old capsule stays in the ledger.
+- `ACCEPTED` after the gate means "form is valid"; the later semantic decision is recorded as a separate decision
+  with its own actor, so the two layers can always be told apart.
 
-## 6. Ánh xạ sang Contract Gate
+## 6. Mapping to the Contract Gate
 
-| Mã | Kiểm tra trên trường mới | Kết quả khi vi phạm |
+| Code | Check on the new fields | Outcome on violation |
 |---|---|---|
-| C1 | `schema_version`, định dạng `capsule_id`/`claim_id`/tham chiếu, `claim_id` trùng, `derivation` khớp số claim cha, `attempt`/`supersedes`, lý do loại, claim vừa dùng vừa loại | REJECTED |
-| C3 | Claim cha tồn tại **và** thuộc capsule trong `parent_capsules`; capsule cha ACCEPTED; chuỗi retry hợp lệ | REJECTED |
-| R1 | Neo theo level (mục 3) | RETRY_REQUIRED |
-| R3 *(đề xuất)* | Mỗi observable xuất hiện (không phân biệt hoa thường) trong event được trích hoặc trong claim cha | RETRY_REQUIRED |
-| R4 *(đề xuất)* | Không khuếch đại level (mục 4) | RETRY_REQUIRED |
+| C1 | `schema_version`, format of `capsule_id`/`claim_id`/references, duplicate `claim_id`, `derivation` matches the number of parent claims, `attempt`/`supersedes`, drop reasons, a claim both used and dropped | REJECTED |
+| C3 | Parent claims exist **and** belong to a capsule in `parent_capsules`; parent capsules ACCEPTED; valid retry chain | REJECTED |
+| R1 | Anchoring by level (section 3) | RETRY_REQUIRED |
+| R3 *(proposed)* | Every observable occurs (case-insensitive) in a cited event or in a parent claim | RETRY_REQUIRED |
+| R4 *(proposed)* | No level escalation (section 4) | RETRY_REQUIRED |
 
-C2, C4, R2 giữ nguyên như v0.1. R3 là **neo từ vựng**: nó cho biết giá trị đó thật sự có trong bằng chứng,
-không cho biết mệnh đề về giá trị đó đúng. Mọi `GateResult` ghi `semantic_check: not_performed`.
+C2, C4 and R2 are unchanged from v0.1. R3 is **lexical anchoring**: it shows the value really occurs in the evidence,
+not that the statement about it is true. Every `GateResult` records `semantic_check: not_performed`.
 
-## 7. Đại lượng đo được từ schema
+## 7. Quantities measurable from the schema
 
-`ep_harness.metrics.claim_flow` tính trên mỗi cạnh handoff `source->dest`:
+`ep_harness.metrics.claim_flow` computes, per handoff edge `source->dest`:
 `parent_claims`, `carried`, `dropped_declared`, `lost_silently`, `child_claims`, `derivation_*`, `escalated`, `downgraded`.
-Đây là số đếm cấu trúc; chúng là đầu vào cho việc đo bảo toàn / suy giảm / khuếch đại claim qua từng handoff,
-nhưng chưa phải phép đo ngữ nghĩa (claim CARRIED có còn giữ nghĩa không vẫn cần Verifier hoặc judge).
+These are structural counts; they are the input for measuring claim preservation / degradation / amplification
+across each handoff, but not yet a semantic measure (whether a CARRIED claim keeps its meaning still needs the
+Verifier or a judge).
 
-## 8. Ví dụ
+## 8. Example
 
 ```json
 {
@@ -140,7 +143,7 @@ nhưng chưa phải phép đo ngữ nghĩa (claim CARRIED có còn giữ nghĩa 
   "claims": [
     {
       "claim_id": "c1",
-      "text": "Máy 10.10.12.110 truy vấn DNS compdatasystems.com",
+      "text": "Host 10.10.12.110 resolved compdatasystems.com",
       "level": "OBSERVED",
       "event_ids": ["event-2"],
       "parent_claims": ["CAP-T7-FINDING#c1"],
@@ -150,7 +153,7 @@ nhưng chưa phải phép đo ngữ nghĩa (claim CARRIED có còn giữ nghĩa 
     },
     {
       "claim_id": "c2",
-      "text": "Tiến trình PowerShell mã hoá là stager liên lạc với C2",
+      "text": "The encoded PowerShell process is the stager talking to the C2",
       "level": "INFERRED",
       "parent_claims": ["CAP-T7-FINDING#c1", "CAP-T7-FINDING#c2"],
       "derivation": "AGGREGATED",
@@ -158,16 +161,16 @@ nhưng chưa phải phép đo ngữ nghĩa (claim CARRIED có còn giữ nghĩa 
     }
   ],
   "dropped_claims": [
-    {"ref": "CAP-T7-FINDING#c3", "reason": "INSUFFICIENT_EVIDENCE", "note": "không có event lateral movement"}
+    {"ref": "CAP-T7-FINDING#c3", "reason": "INSUFFICIENT_EVIDENCE", "note": "no lateral movement event"}
   ],
   "status": "PROPOSED"
 }
 ```
 
-## 9. Giới hạn đã biết
+## 9. Known limits
 
-- Adapter shadow (`adapters/masoc.py`) vẫn sinh claim từ văn bản tự do: level theo heuristic, `lineage = derived`,
-  không có `observables`; Verifier của MA-SOC được mô hình hoá là CARRIED toàn bộ claim. Số liệu từ adapter này
-  chỉ là cận trên về mức neo.
-- Prompt và output parser chưa yêu cầu agent xuất đúng schema này (việc tiếp theo).
-- R3 so khớp chuỗi con: observable quá ngắn hoặc quá phổ biến có thể khớp ngẫu nhiên; chưa có ngưỡng độ dài.
+- The shadow adapter (`adapters/masoc.py`) still builds claims from free text unless the output carries an
+  `evidence_claims` block: heuristic levels, `lineage = derived`, no `observables`; MA-SOC's Verifier is modelled
+  as CARRIED for every claim. Figures from this path are only an upper bound on anchoring.
+- Agents emit this schema only with `ENABLE_CITED_CLAIMS=1` (see `docs/cited_evidence_claims.md`).
+- R3 matches substrings: very short or very common observables can match by chance; there is no length threshold yet.
