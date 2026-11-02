@@ -1,6 +1,7 @@
 """Minimal test runner for environments without pytest.
 
-Usage: python tests/run_tests.py   (pytest also works if installed)
+Usage: python tests/run_tests.py [module ...]   (pytest also works if installed)
+  e.g. python tests/run_tests.py test_capsule_schema test_core
 """
 
 import contextlib
@@ -43,10 +44,18 @@ fixtures = {
     "registry": test_core.registry(),
 }
 
+MODULES = (test_capsule_schema, test_core, test_inline_gate, test_cited_claims)
+# Optional arguments pick modules, e.g. `python tests/run_tests.py test_capsule_schema`.
+selected = set(sys.argv[1:])
+unknown = selected - {m.__name__ for m in MODULES}
+if unknown:
+    sys.exit(f"unknown test module(s): {sorted(unknown)}; choose from {[m.__name__ for m in MODULES]}")
+
 failed = 0
 tests = [
     (f"{module.__name__}::{n}", f)
-    for module in (test_capsule_schema, test_core, test_inline_gate, test_cited_claims)
+    for module in MODULES
+    if not selected or module.__name__ in selected
     for n, f in vars(module).items()
     if n.startswith("test_") and callable(f)
 ]
