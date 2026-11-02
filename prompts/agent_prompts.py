@@ -168,13 +168,63 @@ def build_hunter_retry_instruction(tool_name, attempt):
 
 
 def build_hunter_final_instruction(tool_audit):
+    claims_contract = f"\n\n{build_hunter_claims_contract()}" if _cited_claims_enabled() else ""
     return (
         "All mandatory tool-call attempts for this task are complete. "
         "Produce the final task finding from the raw log, upstream DAG context, reflexion context, and tool outputs. "
         "Be concise and evidence-dense; avoid generic SOC filler. "
         "Treat unsupported NER/REX IOC validation entries as non-evidence unless separately visible in the raw artifact. "
-        "Include a concise Tool Execution Audit so the verifier can validate which tools ran.\n\n"
+        "Include a concise Tool Execution Audit so the verifier can validate which tools ran."
+        f"{claims_contract}\n\n"
         f"Tool Execution Audit:\n{tool_audit}"
+    )
+
+
+# --- EP-HARNESS evidence-claims contract (only with ENABLE_CITED_CLAIMS=1) ---
+
+_CLAIM_LEVEL_RULES = (
+    "Levels: OBSERVED = directly visible in the events you cite (cite at least one event_id); "
+    "INFERRED = follows from several cited events or parent claims but is not visible in any single event; "
+    "HYPOTHESIS = plausible but not shown by the evidence (it will never be reported as a finding). "
+    "Cite only event_id values that appear in the supplied events; never invent or guess an ID. "
+    "observables = values copied character for character from the cited events "
+    "(domain, IP, hash, file path, process or command-line fragment); leave it empty rather than paraphrase. "
+    "One factual statement per claim. Do not add claims only to look complete."
+)
+
+
+def _cited_claims_enabled():
+    from src.orchestration_toggles import load_orchestration_toggles
+
+    return load_orchestration_toggles().enable_cited_claims
+
+
+def build_hunter_claims_contract():
+    return (
+        "Evidence claims (required). After the finding and before the Tool Execution Audit, add exactly one "
+        "fenced block in this form:\n"
+        "```evidence_claims\n"
+        '[{"id": "c1", "text": "<one factual statement>", "level": "OBSERVED", '
+        '"event_ids": ["event-12"], "tools": ["rex_tool"], "observables": ["<exact value from event-12>"]}]\n'
+        "```\n"
+        "tools = the tools from the Tool Execution Audit whose output supports the claim. "
+        f"{_CLAIM_LEVEL_RULES}"
+    )
+
+
+def build_analyst_claims_contract():
+    return (
+        "Evidence claims (required). Each verified finding lists its claims with a ref such as "
+        "CAP-T7-VERIFIED-a1#c2. End every analytic statement line of your analysis (including table rows) "
+        "with its claim ID in square brackets, e.g. '... beaconing every 60 s [c3]'. Then end the analysis "
+        "with exactly one fenced block in this form:\n"
+        "```evidence_claims\n"
+        '[{"id": "c3", "text": "<the statement>", "level": "INFERRED", '
+        '"parent_claims": ["CAP-T7-VERIFIED-a1#c2"], "event_ids": ["event-12"], "observables": []}]\n'
+        "```\n"
+        "parent_claims = refs of the verified claims the statement builds on, copied exactly. "
+        "A statement may be stronger than the claims it builds on only if it cites its own event_ids. "
+        f"{_CLAIM_LEVEL_RULES}"
     )
 
 

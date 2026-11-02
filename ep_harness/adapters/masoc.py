@@ -18,6 +18,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from ..capsule import Capsule, Claim, claim_ref
+from ..claim_parser import claims_from_records, extract_claims_block
 from ..contracts import ContractRegistry, TaskContract, default_masoc_registry
 from ..gate import ContractGate, GateResult
 from ..ledger import EvidenceLedger
@@ -71,7 +72,8 @@ def split_tool_audit(hunter_output: str) -> tuple[str, list[dict]]:
         return text.strip(), []
     body, audit_text = text[:marker].strip(), text[marker + len(_AUDIT_MARKER):].strip()
     try:
-        audit = json.loads(audit_text)
+        # raw_decode: text appended after the audit (e.g. a debate resolution) is ignored.
+        audit, _ = json.JSONDecoder().raw_decode(audit_text)
     except json.JSONDecodeError:
         audit = []
     return body, audit if isinstance(audit, list) else []
@@ -86,6 +88,23 @@ def register_tool_artifacts(ledger: EvidenceLedger, task_id: str, audit: list[di
         ledger.add_artifact(artifact_id, task_id, tool, str(item.get("status", "")), digest)
         artifact_ids.append(artifact_id)
     return artifact_ids
+
+
+def artifacts_by_tool(audit: list[dict], artifact_ids: list[str]) -> dict[str, str]:
+    """Tool name -> artifact ID, for tools that ran successfully (as register_tool_artifacts ordered them)."""
+    return {
+        str(item.get("tool", "")): artifact_id
+        for item, artifact_id in zip(audit, artifact_ids)
+        if item.get("status") == "ok"
+    }
+
+
+def finding_claims(body: str, obs_index, audit: list[dict], artifact_ids: list[str]) -> tuple[list[Claim], str]:
+    """Agent-cited claims when the output carries a claims block, else claims derived per line."""
+    parsed = extract_claims_block(body)
+    if parsed.found:
+        return claims_from_records(parsed.records, artifacts_by_tool(audit, artifact_ids)), "agent"
+    return claims_from_text(body, obs_index, artifact_ids), "heuristic"
 
 
 def claims_from_text(text: str, obs_index: dict[str, tuple[str, ...]], artifact_ids: list[str]) -> list[Claim]:
@@ -138,15 +157,16 @@ def audit_hunt_results(evidence_store: dict, hunt_results: list[dict], registry:
         task_id = str(item.get("task_id", ""))
         body, audit = split_tool_audit(item.get("result", ""))
         artifact_ids = register_tool_artifacts(ledger, task_id, audit)
+        claims, level_source = finding_claims(body, obs_index, audit, artifact_ids)
         finding = Capsule(
             capsule_id=f"CAP-{task_id}-FINDING",
             kind="FINDING",
             task_id=task_id,
             source="hunter",
             dest="verifier",
-            claims=tuple(claims_from_text(body, obs_index, artifact_ids)),
+            claims=tuple(claims),
             tools_used=tuple(a.get("tool", "") for a in audit),
-            metadata={"masoc_status": item.get("status"), "level_source": "heuristic"},
+            metadata={"masoc_status": item.get("status"), "level_source": level_source},
         )
         gate_result = gate.check(finding)
         capsules.append(finding)

@@ -43,8 +43,10 @@ class OrchestrationToggles:
     ioc_curator: bool = True
     ttp_relations_graph: bool = True
     mitre_mapper: bool = True
-    # EP-HARNESS: inline Contract Gate (ep_harness.inline); the others are still placeholders
+    # EP-HARNESS: inline Contract Gate (ep_harness.inline) and agent-cited evidence claims;
+    # the others are still placeholders
     enable_contract_gate: bool = False
+    enable_cited_claims: bool = False
     enable_semantic_verifier: bool = False
     policy_mode: str = "fixed"
     enable_output_guardrail: bool = False
@@ -54,17 +56,22 @@ class OrchestrationToggles:
 
 
 def load_orchestration_toggles():
-    """Load MA-SOC ablation toggles and EP-HARNESS configuration placeholders."""
-    return OrchestrationToggles(
+    """Load MA-SOC ablation toggles and EP-HARNESS configuration."""
+    toggles = OrchestrationToggles(
         dag_orchestrator=_env_toggle("ENABLE_DAG_ORCHESTRATOR", True),
         ioc_curator=_env_toggle("ENABLE_IOC_CURATOR", True),
         ttp_relations_graph=_env_toggle("ENABLE_TTP_RELATIONS_GRAPH", True),
         mitre_mapper=_env_toggle("ENABLE_MITRE_MAPPER", True),
         enable_contract_gate=_env_toggle("ENABLE_CONTRACT_GATE", False),
+        enable_cited_claims=_env_toggle("ENABLE_CITED_CLAIMS", False),
         enable_semantic_verifier=_env_toggle("ENABLE_SEMANTIC_VERIFIER", False),
         policy_mode=_env_policy_mode("POLICY_MODE", "fixed"),
         enable_output_guardrail=_env_toggle("ENABLE_OUTPUT_GUARDRAIL", False),
     )
+    if toggles.enable_cited_claims and not toggles.enable_contract_gate:
+        # The claims block is only parsed and checked by the inline gate.
+        raise ValueError("ENABLE_CITED_CLAIMS=1 requires ENABLE_CONTRACT_GATE=1.")
+    return toggles
 
 
 def disabled_ttp_graph_context():

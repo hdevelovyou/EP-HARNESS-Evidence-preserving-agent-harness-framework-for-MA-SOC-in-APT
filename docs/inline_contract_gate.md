@@ -8,7 +8,8 @@ Trạng thái: **đã cài đặt** (`ep_harness/inline.py`, tích hợp trong `
 | Biến môi trường | Mặc định | Ý nghĩa |
 |---|---|---|
 | `ENABLE_CONTRACT_GATE` | `0` | `1` bật gate inline. Tắt thì pipeline chạy y như MA-SOC gốc |
-| `CONTRACT_GATE_ANALYST_RETRIES` | `1` | Số lần gọi lại Analyst khi ANALYSIS bị chặn vì lỗi ở cấp claim |
+| `CONTRACT_GATE_ANALYST_RETRIES` | `1` | Số lần gọi lại Analyst khi ANALYSIS bị chặn vì lỗi ở cấp claim hoặc thiếu khối claim |
+| `ENABLE_CITED_CLAIMS` | `0` | `1` = agent tự trích claim (`docs/cited_evidence_claims.md`); `0` = claim suy ra từ văn bản |
 
 Giá trị toggle được ghi vào `runs/<id>/orchestration_config.json` như mọi toggle khác.
 
@@ -42,10 +43,10 @@ Bundle trả về từ `_execute_agent_runtime` có thêm khoá `ech_audit`.
 
 ## Giới hạn đã biết
 
-- Agent vẫn viết văn bản tự do. Capsule được dựng bằng cách tách dòng: tham chiếu event là `derived`
+- Khi `ENABLE_CITED_CLAIMS=0`, agent vẫn viết văn bản tự do. Capsule được dựng bằng cách tách dòng: tham chiếu event là `derived`
   (khớp observable), level theo heuristic, không có `observables`. Vì vậy hiện gate inline chủ yếu bắt được:
   event ID bịa (`dangling_event`), thiếu tool bắt buộc (`missing_tool`), output rỗng, ANALYSIS không có cha
-  được chấp nhận. Gate sẽ chặt hơn nhiều khi prompt và parser bắt agent xuất capsule có trích ID (việc tiếp theo).
+  được chấp nhận. Bật `ENABLE_CITED_CLAIMS=1` để agent tự trích ID.
 - C4 tính artifact tool của mọi lần thử trong cùng task, không chỉ lần hiện tại.
 - Liên kết claim ANALYSIS → claim VERIFIED dựa trên event chung, nên có thể nối thừa với event phổ biến.
 - REPORT gần như luôn bị đánh RETRY_REQUIRED/REJECTED vì các dòng tường thuật bị coi là HYPOTHESIS; đó là lý do

@@ -73,7 +73,22 @@
         "record_only_edges": [
           "reporter->output"
         ],
-        "analyst_retries_env": "CONTRACT_GATE_ANALYST_RETRIES"
+        "analyst_retries_env": "CONTRACT_GATE_ANALYST_RETRIES",
+        "claim_source_env": "ENABLE_CITED_CLAIMS"
+      }
+    },
+    {
+      "name": "claim_parser",
+      "category": "hooks_middleware",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "fence": "evidence_claims",
+        "agents": [
+          "hunter",
+          "analyst"
+        ],
+        "toggle": "ENABLE_CITED_CLAIMS"
       }
     }
   ]

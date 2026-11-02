@@ -76,8 +76,8 @@ def test_analysis_withholds_only_claims_with_violations(evidence_store):
 
     text = f"## Timeline\n{ANALYSIS_GOOD}\n{ANALYSIS_FAKE}\nshort line"
     outcome = ech.analyst_handoff(text)
-    assert outcome.status == "REJECTED" and outcome.has_claim_violations
-    filtered = ech.withhold_blocked_claims(text, outcome)
+    assert outcome.status == "REJECTED" and outcome.retryable
+    filtered = ech.analysis_for_reporter(text, outcome)
     assert filtered == f"## Timeline\n{ANALYSIS_GOOD}\nshort line"
 
     analysis = ech.ledger.capsule(outcome.capsule_id)
@@ -90,7 +90,7 @@ def test_analysis_without_accepted_parents_is_not_retryable(evidence_store):
     ech = ech_for(evidence_store)
     outcome = ech.analyst_handoff(ANALYSIS_GOOD)
     assert outcome.status == "RETRY_REQUIRED"
-    assert not outcome.has_claim_violations  # missing_parents: an Analyst retry cannot fix it
+    assert not outcome.retryable  # missing_parents: an Analyst retry cannot fix it
 
 
 # ------------------------------------------------------------ main.py without LLM calls
@@ -99,7 +99,10 @@ _STUBBED = [
     "agents.analyst_agent", "agents.coordinator_agent", "agents.debate_judge_agent", "agents.hunter_agent",
     "agents.llm_config", "agents.reporter_agent", "agents.verifier_agent",
     "evaluation.evaluator", "evaluation.reasoning_evaluator", "src.mitre_mapper",
+    "langchain_core", "langchain_core.messages", "langchain_core.prompts",
 ]
+# Imported afresh inside the stub context, so they bind the stubbed modules.
+_REIMPORTED = ["main", "prompts", "prompts.agent_prompts"]
 _ENV = {
     "ENABLE_DAG_ORCHESTRATOR": "0",
     "ENABLE_TTP_RELATIONS_GRAPH": "0",
@@ -119,23 +122,26 @@ def _fake_callback():
 
 
 @contextlib.contextmanager
-def stubbed_main(tmp_path, gate_enabled):
-    saved_modules = {name: sys.modules.get(name) for name in _STUBBED + ["main"]}
-    saved_env = {name: os.environ.get(name) for name in [*_ENV, "ENABLE_CONTRACT_GATE"]}
+def stubbed_main(tmp_path, gate_enabled, cited=False):
+    saved_modules = {name: sys.modules.get(name) for name in _STUBBED + _REIMPORTED}
+    saved_env = {name: os.environ.get(name) for name in [*_ENV, "ENABLE_CONTRACT_GATE", "ENABLE_CITED_CLAIMS"]}
     saved_cwd = os.getcwd()
     try:
         for name in _STUBBED:
             module = types.ModuleType(name)
             for attr in ("AnalystAgent", "CoordinatorAgent", "DebateFeedbackAgent", "DebateJudgeAgent",
                          "HunterAgent", "ReporterAgent", "VerifierAgent", "SOCEvaluator",
-                         "ReasoningEvaluator", "MitreMapper"):
+                         "ReasoningEvaluator", "MitreMapper", "HumanMessage", "SystemMessage",
+                         "AIMessage", "ToolMessage", "ChatPromptTemplate"):
                 setattr(module, attr, _Placeholder)
             module.get_llm_config_snapshot = lambda roles: {}
             module.get_openai_callback = _fake_callback
             sys.modules[name] = module
-        sys.modules.pop("main", None)
+        for name in _REIMPORTED:
+            sys.modules.pop(name, None)
         sys.path.insert(0, str(REPO))
-        os.environ.update(_ENV, ENABLE_CONTRACT_GATE="1" if gate_enabled else "0")
+        os.environ.update(_ENV, ENABLE_CONTRACT_GATE="1" if gate_enabled else "0",
+                          ENABLE_CITED_CLAIMS="1" if cited else "0")
         os.chdir(tmp_path)
         import main
 

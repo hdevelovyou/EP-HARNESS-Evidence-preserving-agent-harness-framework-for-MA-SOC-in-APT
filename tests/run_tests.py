@@ -35,6 +35,7 @@ if "pytest" not in sys.modules:
 
 import test_capsule_schema  # noqa: E402
 import test_inline_gate  # noqa: E402
+import test_cited_claims  # noqa: E402
 import test_core  # noqa: E402
 
 fixtures = {
@@ -45,7 +46,7 @@ fixtures = {
 failed = 0
 tests = [
     (f"{module.__name__}::{n}", f)
-    for module in (test_capsule_schema, test_core, test_inline_gate)
+    for module in (test_capsule_schema, test_core, test_inline_gate, test_cited_claims)
     for n, f in vars(module).items()
     if n.startswith("test_") and callable(f)
 ]

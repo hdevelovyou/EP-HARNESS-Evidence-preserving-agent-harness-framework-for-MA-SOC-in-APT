@@ -17,7 +17,9 @@ from agents.reporter_agent import ReporterAgent
 from agents.summarizer_agent import SummarizerAgent
 from agents.task_catalog import TASK_BY_ID, TASK_INVENTORY, clone_task
 from agents.verifier_agent import VerifierAgent
+from ep_harness.claim_parser import remove_claims_block
 from ep_harness.inline import InlineECH
+from prompts import build_analyst_claims_contract
 from evaluation.evaluator import SOCEvaluator
 from evaluation.reasoning_evaluator import ReasoningEvaluator
 from src.domain_pack import get_domain_pack_metadata
@@ -474,7 +476,11 @@ def _execute_agent_runtime(
 
             # EP-HARNESS: inline Contract Gate on Hunter->Verifier, Verifier->Analyst, Analyst->Reporter
             ech = (
-                InlineECH(evidence_store, TASK_INVENTORY)
+                InlineECH(
+                    evidence_store,
+                    TASK_INVENTORY,
+                    claim_source="cited" if orchestration_toggles.enable_cited_claims else "derived",
+                )
                 if orchestration_toggles.enable_contract_gate
                 else None
             )
@@ -650,7 +656,7 @@ def _execute_agent_runtime(
 
                         last_artifact = summarizer.summarize(
                             task,
-                            hunter_output,
+                            remove_claims_block(hunter_output),
                             evidence_store=evidence_store,
                         )
                         last_hunter_output = summarizer.compact_for_retry(last_artifact)
@@ -732,7 +738,7 @@ def _execute_agent_runtime(
                                 print(f"    [SKIP] {failure_status} after max retries.")
                                 failed_artifact = summarizer.summarize(
                                     task,
-                                    hunter_output,
+                                    remove_claims_block(hunter_output),
                                     evidence_store=evidence_store,
                                     status=failure_status,
                                     reason=check_str,
@@ -810,8 +816,15 @@ def _execute_agent_runtime(
                 for item in final_results
                 if item["status"] == "Verified"
             ]
+            if ech is not None and ech.cited:
+                # The Analyst cites these refs as parent_claims.
+                verified_claims = ech.verified_claims()
+                for entry in lean_results:
+                    entry["claims"] = verified_claims.get(entry["task"], [])
             results_str = json.dumps(lean_results, indent=2, ensure_ascii=False)
             analysis_context = extractor.build_analysis_context(evidence_store)
+            if ech is not None and ech.cited:
+                analysis_context = f"{analysis_context}\n\n{build_analyst_claims_contract()}"
 
             # Toggle 1 (decoupled): TTP Relations Graph for Analyst stage ONLY
             ttp_graph_context = (
@@ -907,7 +920,7 @@ def _execute_agent_runtime(
                 analyst_gate_retries = int(os.getenv("CONTRACT_GATE_ANALYST_RETRIES", "1"))
                 while (
                     not analysis_outcome.accepted
-                    and analysis_outcome.has_claim_violations
+                    and analysis_outcome.retryable
                     and analyst_gate_retries > 0
                 ):
                     analyst_gate_retries -= 1
@@ -920,8 +933,8 @@ def _execute_agent_runtime(
                     )
                     analysis_outcome = ech.analyst_handoff(deep_analysis)
                 ungated_analysis = deep_analysis
+                deep_analysis = ech.analysis_for_reporter(deep_analysis, analysis_outcome)
                 if not analysis_outcome.accepted:
-                    deep_analysis = ech.withhold_blocked_claims(deep_analysis, analysis_outcome)
                     print(
                         f"[GATE] Analysis {analysis_outcome.capsule_id} is {analysis_outcome.status}; "
                         "claims with violations withheld from the Reporter."
