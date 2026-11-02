@@ -9,7 +9,7 @@ Status: **implemented** (`ep_harness/inline.py`, wired into `main.py`); tests wi
 |---|---|---|
 | `ENABLE_CONTRACT_GATE` | `0` | `1` enables the inline gate. When off, the pipeline runs exactly like the original MA-SOC |
 | `CONTRACT_GATE_ANALYST_RETRIES` | `1` | How many times the Analyst is called again when the ANALYSIS is blocked by a claim-level violation or a missing claims block |
-| `ENABLE_CITED_CLAIMS` | `0` | `1` = agents cite their own claims (`docs/cited_evidence_claims.md`); `0` = claims derived from free text |
+| `ENABLE_CITED_CLAIMS` | `0` | `1` = agents cite their own claims (`docs/ep_harness/cited_evidence_claims.md`); `0` = claims derived from free text |
 
 The toggle values are written to `runs/<id>/orchestration_config.json` like every other toggle.
 

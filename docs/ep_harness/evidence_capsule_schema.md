@@ -172,5 +172,5 @@ Verifier or a judge).
 - The shadow adapter (`adapters/masoc.py`) still builds claims from free text unless the output carries an
   `evidence_claims` block: heuristic levels, `lineage = derived`, no `observables`; MA-SOC's Verifier is modelled
   as CARRIED for every claim. Figures from this path are only an upper bound on anchoring.
-- Agents emit this schema only with `ENABLE_CITED_CLAIMS=1` (see `docs/cited_evidence_claims.md`).
+- Agents emit this schema only with `ENABLE_CITED_CLAIMS=1` (see `docs/ep_harness/cited_evidence_claims.md`).
 - R3 matches substrings: very short or very common observables can match by chance; there is no length threshold yet.
