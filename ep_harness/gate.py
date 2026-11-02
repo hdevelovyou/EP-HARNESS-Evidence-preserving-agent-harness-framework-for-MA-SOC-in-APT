@@ -5,8 +5,8 @@ The gate checks FORM and REFERENCES, never truth:
                    derivation consistent with parent claims, retry fields
   C2 identity    - the (source, dest, kind) edge exists; task is known
   C3 references  - cited events/artifacts/parents/parent claims exist in the
-                   ledger; parents ACCEPTED; a retry supersedes a
-                   RETRY_REQUIRED capsule of the same task
+                   ledger; parents ACCEPTED; a retry supersedes a capsule of
+                   the same task that reached a terminal status
   C4 tools       - the task's mandatory tools actually executed
   R1 anchoring   - OBSERVED claims cite >=1 event; INFERRED claims cite
                    events or parent claims
@@ -43,6 +43,7 @@ from .capsule import (
     LINEAGE_SOURCES,
     MIN_PARENT_CLAIMS,
     SUPPORTED_SCHEMA_VERSIONS,
+    TERMINAL_STATUSES,
     TTP_PATTERN,
     Capsule,
     parse_claim_ref,
@@ -256,7 +257,7 @@ class ContractGate:
         out = []
         if (previous.task_id, previous.kind, previous.source) != (capsule.task_id, capsule.kind, capsule.source):
             out.append(Violation("C3", "superseded_mismatch", "a retry must keep task_id, kind and source"))
-        if self.ledger.capsule_status(previous.capsule_id) != "RETRY_REQUIRED":
+        if self.ledger.capsule_status(previous.capsule_id) not in TERMINAL_STATUSES:
             out.append(
                 Violation(
                     "C3",

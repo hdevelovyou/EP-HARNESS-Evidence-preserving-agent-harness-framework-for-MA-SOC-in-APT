@@ -2,15 +2,79 @@
   "name": "ep-harness",
   "version": "0.2.0",
   "components": [
-    {"name": "evidence_ledger", "category": "evidence_provenance", "version": "0.2.0", "enabled": true,
-     "config": {"status_transitions": "capsule.STATUS_TRANSITIONS"}},
-    {"name": "evidence_capsule", "category": "evidence_provenance", "version": "0.2.0", "enabled": true,
-     "config": {"schema": "schemas/evidence_capsule.v0.2.json"}},
-    {"name": "contract_gate", "category": "hooks_middleware", "version": "0.2.0", "enabled": true,
-     "config": {"checks": ["C1", "C2", "C3", "C4", "R1", "R2", "R3", "R4"], "semantic_check": "not_performed"}},
-    {"name": "contract_registry", "category": "tools_skills", "version": "0.1.0", "enabled": true,
-     "config": {"source": "masoc agents/task_catalog.py"}},
-    {"name": "masoc_shadow_adapter", "category": "observability_evaluation", "version": "0.2.0", "enabled": true,
-     "config": {"lineage": "derived", "min_observable_len": 4}}
+    {
+      "name": "evidence_ledger",
+      "category": "evidence_provenance",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "status_transitions": "capsule.STATUS_TRANSITIONS"
+      }
+    },
+    {
+      "name": "evidence_capsule",
+      "category": "evidence_provenance",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "schema": "schemas/evidence_capsule.v0.2.json"
+      }
+    },
+    {
+      "name": "contract_gate",
+      "category": "hooks_middleware",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "checks": [
+          "C1",
+          "C2",
+          "C3",
+          "C4",
+          "R1",
+          "R2",
+          "R3",
+          "R4"
+        ],
+        "semantic_check": "not_performed"
+      }
+    },
+    {
+      "name": "contract_registry",
+      "category": "tools_skills",
+      "version": "0.1.0",
+      "enabled": true,
+      "config": {
+        "source": "masoc agents/task_catalog.py"
+      }
+    },
+    {
+      "name": "masoc_shadow_adapter",
+      "category": "observability_evaluation",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "lineage": "derived",
+        "min_observable_len": 4
+      }
+    },
+    {
+      "name": "inline_ech",
+      "category": "hooks_middleware",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "toggle": "ENABLE_CONTRACT_GATE",
+        "edges": [
+          "hunter->verifier",
+          "verifier->analyst",
+          "analyst->reporter"
+        ],
+        "record_only_edges": [
+          "reporter->output"
+        ],
+        "analyst_retries_env": "CONTRACT_GATE_ANALYST_RETRIES"
+      }
+    }
   ]
 }

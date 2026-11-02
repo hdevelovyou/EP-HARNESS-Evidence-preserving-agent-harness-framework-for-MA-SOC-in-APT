@@ -1,7 +1,8 @@
 """EP-HARNESS: evidence-aware harness for multi-agent SOC threat hunting.
 
 v0.2: Evidence Capsule schema v0.2 (claim IDs, claim lineage, observables,
-declared drops, retry lineage, status transitions); ECH core in shadow mode.
+declared drops, retry lineage, status transitions); ECH core as a shadow
+audit (adapters.masoc) or inline in the MA-SOC runtime (inline).
 """
 
 from .capsule import SCHEMA_VERSION, Capsule, Claim, ClaimDrop, claim_ref, parse_claim_ref

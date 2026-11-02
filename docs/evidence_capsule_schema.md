@@ -98,8 +98,9 @@ Bất biến:
 - Agent không tự ACCEPT: capsule gửi lên với `status ≠ PROPOSED` bị REJECTED (C1).
 - Không actor nào quyết định trên capsule do chính mình tạo (`actor ≠ source`).
 - Policy Orchestrator chỉ được dừng hoặc chuyển xem xét, không bao giờ ACCEPT (không ép thêm kết luận).
-- Thử lại = capsule mới với `attempt + 1` và `supersedes` trỏ về capsule RETRY_REQUIRED cũ, cùng `task_id`, `kind`,
-  `source`; mỗi capsule chỉ được thay thế một lần (C3). Capsule cũ vẫn nằm trong ledger.
+- Thử lại = capsule mới với `attempt + 1` và `supersedes` trỏ về capsule cũ đã ở trạng thái cuối
+  (RETRY_REQUIRED, REJECTED hoặc UNRESOLVED), cùng `task_id`, `kind`, `source`; mỗi capsule chỉ được thay thế
+  một lần; capsule ACCEPTED không được thay thế (C3). Capsule cũ vẫn nằm trong ledger.
 - `ACCEPTED` sau gate nghĩa là "đạt hình thức"; quyết định ngữ nghĩa tiếp theo được ghi thành decision riêng
   với actor tương ứng, nên luôn phân biệt được hai tầng.
 

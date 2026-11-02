@@ -96,8 +96,13 @@ def claims_from_text(text: str, obs_index: dict[str, tuple[str, ...]], artifact_
     HYPOTHESIS (narrative), so it may travel but can never reach the final
     report as a finding. The gate never rewrites levels itself.
     """
-    claims = []
-    for raw_line in text.splitlines():
+    return [claim for _, claim in claim_lines(text, obs_index, artifact_ids)]
+
+
+def claim_lines(text: str, obs_index: dict[str, tuple[str, ...]], artifact_ids: list[str]) -> list[tuple[int, Claim]]:
+    """Like claims_from_text, paired with the index of the source line in ``text``."""
+    pairs = []
+    for line_index, raw_line in enumerate(str(text or "").splitlines()):
         line = " ".join(raw_line.strip().lstrip("-*#> ").split())
         if len(line) < _MIN_CLAIM_LEN:
             continue
@@ -105,18 +110,17 @@ def claims_from_text(text: str, obs_index: dict[str, tuple[str, ...]], artifact_
         cited = tuple(sorted(set(_EVENT_REF.findall(lowered))))
         derived = sorted({eid for value, eids in obs_index.items() if value in lowered for eid in eids})
         event_ids = cited or tuple(derived)
-        claims.append(
-            Claim(
-                text=line[:500],
-                level="OBSERVED" if event_ids else "HYPOTHESIS",
-                event_ids=event_ids,
-                artifact_ids=tuple(artifact_ids) if event_ids else (),
-                ttp_candidates=tuple(sorted({t.upper() for t in _TTP.findall(line)})),
-                lineage="cited" if cited else "derived",
-                claim_id=f"c{len(claims) + 1}",
-            )
+        claim = Claim(
+            text=line[:500],
+            level="OBSERVED" if event_ids else "HYPOTHESIS",
+            event_ids=event_ids,
+            artifact_ids=tuple(artifact_ids) if event_ids else (),
+            ttp_candidates=tuple(sorted({t.upper() for t in _TTP.findall(line)})),
+            lineage="cited" if cited else "derived",
+            claim_id=f"c{len(pairs) + 1}",
         )
-    return claims
+        pairs.append((line_index, claim))
+    return pairs
 
 
 # ---------------------------------------------------------------- audit

@@ -15,8 +15,9 @@ from agents.hunter_agent import HunterAgent
 from agents.llm_config import get_llm_config_snapshot
 from agents.reporter_agent import ReporterAgent
 from agents.summarizer_agent import SummarizerAgent
-from agents.task_catalog import TASK_BY_ID, clone_task
+from agents.task_catalog import TASK_BY_ID, TASK_INVENTORY, clone_task
 from agents.verifier_agent import VerifierAgent
+from ep_harness.inline import InlineECH
 from evaluation.evaluator import SOCEvaluator
 from evaluation.reasoning_evaluator import ReasoningEvaluator
 from src.domain_pack import get_domain_pack_metadata
@@ -471,6 +472,15 @@ def _execute_agent_runtime(
             pre_runtime_entities = extractor.build_entity_inventory(evidence_store)
             entity_context = json.dumps(pre_runtime_entities, indent=2, ensure_ascii=False)
 
+            # EP-HARNESS: inline Contract Gate on Hunter->Verifier, Verifier->Analyst, Analyst->Reporter
+            ech = (
+                InlineECH(evidence_store, TASK_INVENTORY)
+                if orchestration_toggles.enable_contract_gate
+                else None
+            )
+            if ech is not None:
+                print("[ECH] Contract Gate enabled inline at Hunter->Verifier, Verifier->Analyst, Analyst->Reporter.")
+
             coordinator_plan = coordinator.plan(sanitized_log)
             if is_debate:
                 plan_debate_started = time.time()
@@ -645,8 +655,48 @@ def _execute_agent_runtime(
                         )
                         last_hunter_output = summarizer.compact_for_retry(last_artifact)
 
-                        check_result = verifier.verify(task["name"], hunter_output, task_log)
+                        gate_outcome = ech.hunter_handoff(task["id"], hunter_output) if ech else None
+                        gate_blocked = gate_outcome is not None and not gate_outcome.accepted
+                        if gate_blocked:
+                            print(
+                                f"    [GATE] Finding {gate_outcome.capsule_id} is {gate_outcome.status}; "
+                                "Verifier not called."
+                            )
+                            check_result = gate_outcome.feedback
+                        else:
+                            check_result = verifier.verify(task["name"], hunter_output, task_log)
                         check_str = str(check_result).strip()
+
+                        verifier_handoff = None
+                        if ech is not None and not gate_blocked:
+                            ech.record_verifier(task["id"], _is_verifier_ok(check_str), check_str)
+                            if _is_verifier_ok(check_str):
+                                verifier_handoff = ech.verifier_handoff(task["id"])
+
+                        if verifier_handoff is not None and not verifier_handoff.accepted:
+                            # Blocked at Verifier->Analyst: a Hunter retry cannot fix this edge.
+                            print(
+                                f"    [GATE] {verifier_handoff.capsule_id} is {verifier_handoff.status}; "
+                                f"task {task['id']} excluded from the Analyst."
+                            )
+                            final_results.append({
+                                "task_id": task["id"],
+                                "task_name": task["name"],
+                                "status": "Gate_Blocked",
+                                "depends_on": task.get("depends_on", []),
+                                "selected_by_coordinator": task.get("selected_by_coordinator", False),
+                                "result": hunter_output,
+                                "artifact": last_artifact,
+                                "reason": verifier_handoff.feedback,
+                            })
+                            record_task_failure(
+                                dag_state,
+                                task,
+                                hunter_output,
+                                verifier_handoff.feedback,
+                                artifact=last_artifact,
+                            )
+                            break
 
                         if _is_verifier_ok(check_str):
                             print(f"    [VERIFIED] Task {task['id']} passed.")
@@ -672,23 +722,25 @@ def _execute_agent_runtime(
                         else:
                             retries += 1
                             last_feedback = check_result
-                            print(f"    [FAILED] Verifier feedback: {check_result}")
+                            failure_status = "Gate_Blocked" if gate_blocked else "Failed_Verification"
+                            feedback_source = "Contract Gate" if gate_blocked else "Verifier"
+                            print(f"    [FAILED] {feedback_source} feedback: {check_result}")
 
                             if retries <= max_retries:
-                                print("    [RETRY] Hunter re-working with verifier feedback...")
+                                print(f"    [RETRY] Hunter re-working with {feedback_source} feedback...")
                             else:
-                                print("    [SKIP] Verification failed after max retries.")
+                                print(f"    [SKIP] {failure_status} after max retries.")
                                 failed_artifact = summarizer.summarize(
                                     task,
                                     hunter_output,
                                     evidence_store=evidence_store,
-                                    status="Failed_Verification",
+                                    status=failure_status,
                                     reason=check_str,
                                 )
                                 failed_entry = {
                                     "task_id": task["id"],
                                     "task_name": task["name"],
-                                    "status": "Failed_Verification",
+                                    "status": failure_status,
                                     "depends_on": task.get("depends_on", []),
                                     "selected_by_coordinator": task.get("selected_by_coordinator", False),
                                     "result": hunter_output,
@@ -849,9 +901,38 @@ def _execute_agent_runtime(
                     analyst_debate_record["nonblocking_concerns_accepted"] = True
                 debate_records.append(analyst_debate_record)
 
+            ungated_analysis = deep_analysis
+            if ech is not None:
+                analysis_outcome = ech.analyst_handoff(deep_analysis)
+                analyst_gate_retries = int(os.getenv("CONTRACT_GATE_ANALYST_RETRIES", "1"))
+                while (
+                    not analysis_outcome.accepted
+                    and analysis_outcome.has_claim_violations
+                    and analyst_gate_retries > 0
+                ):
+                    analyst_gate_retries -= 1
+                    print(f"[GATE] Analysis {analysis_outcome.capsule_id} is {analysis_outcome.status}; retrying Analyst.")
+                    deep_analysis = analyst.analyze_incident(
+                        results_str,
+                        f"{analysis_context}\n\n{analysis_outcome.feedback}",
+                        entity_context=entity_context,
+                        ttp_relations_context=ttp_graph_prompt_context,
+                    )
+                    analysis_outcome = ech.analyst_handoff(deep_analysis)
+                ungated_analysis = deep_analysis
+                if not analysis_outcome.accepted:
+                    deep_analysis = ech.withhold_blocked_claims(deep_analysis, analysis_outcome)
+                    print(
+                        f"[GATE] Analysis {analysis_outcome.capsule_id} is {analysis_outcome.status}; "
+                        "claims with violations withheld from the Reporter."
+                    )
+
             analyst_result_path = os.path.join(run_dir, "analyst_result.md")
             with open(analyst_result_path, "w", encoding="utf-8") as f:
-                f.write(deep_analysis)
+                f.write(ungated_analysis)
+            if deep_analysis != ungated_analysis:
+                with open(os.path.join(run_dir, "analyst_result_gated.md"), "w", encoding="utf-8") as f:
+                    f.write(deep_analysis)
 
             ioc_continuity_context, ioc_continuity_audit = _build_ioc_continuity_context(
                 extractor,
@@ -992,6 +1073,13 @@ def _execute_agent_runtime(
                 with open(debate_path, "w", encoding="utf-8") as f:
                     json.dump(debate_records, f, ensure_ascii=False, indent=2)
 
+            ech_audit = None
+            if ech is not None:
+                ech.reporter_handoff(report_str)
+                ech.save(run_dir)
+                ech_audit = ech.summary()
+                print(f"[ECH] Gate audit saved: {json.dumps(ech_audit['summary']['gate'], ensure_ascii=False)}")
+
             # SEAL FINAL_REPORT_SOC.md BEFORE ANY EVALUATION CAN RUN
             report_path = os.path.join(run_dir, "FINAL_REPORT_SOC.md")
             with open(report_path, "w", encoding="utf-8") as f:
@@ -1035,6 +1123,7 @@ def _execute_agent_runtime(
             },
             "debate_records": debate_records,
             "debate_path": debate_path,
+            "ech_audit": ech_audit,
             "debate_timeout": debate_timeout,
         }
 

@@ -1,4 +1,4 @@
-# ep_harness (v0.2.0: Evidence Capsule schema v0.2, ECH core in shadow mode)
+# ep_harness (v0.2.0: Evidence Capsule schema v0.2, ECH core shadow + inline)
 
 Evidence-aware harness for multi-agent SOC threat hunting. This version audits the handoffs of an
 existing MA-SOC run without changing MA-SOC. Schema specification: `docs/evidence_capsule_schema.md`.
@@ -16,6 +16,7 @@ ep_harness/
   manifest.py        Component manifest (8 categories) + fingerprint
   harness.json       Default manifest
   adapters/masoc.py  Reads MA-SOC evidence_store.json + soc_hunt_results.json
+  inline.py          Inline gate between agents in main.py (ENABLE_CONTRACT_GATE=1)
   cli.py             `audit` command
 ```
 
@@ -27,6 +28,8 @@ python -m ep_harness.cli audit runs/<scenario_id> --masoc-repo . \
 ```
 
 Tests (no pytest needed): `python tests/run_tests.py`
+
+Inline mode: `ENABLE_CONTRACT_GATE=1 python main.py ...`; see `docs/inline_contract_gate.md`.
 
 ## Gate decisions
 

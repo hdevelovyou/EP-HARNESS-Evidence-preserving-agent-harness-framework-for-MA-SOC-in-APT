@@ -15,7 +15,7 @@
     "dest": {"enum": ["hunter", "verifier", "analyst", "reporter", "output"]},
     "attempt": {"type": "integer", "minimum": 1, "default": 1},
     "supersedes": {
-      "description": "capsule_id of the RETRY_REQUIRED capsule this retry replaces; set iff attempt > 1.",
+      "description": "capsule_id of the terminal (RETRY_REQUIRED, REJECTED or UNRESOLVED) capsule this retry replaces; set iff attempt > 1.",
       "type": ["string", "null"],
       "pattern": "^CAP-[A-Za-z0-9_.:-]+$"
     },

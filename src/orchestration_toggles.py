@@ -43,7 +43,7 @@ class OrchestrationToggles:
     ioc_curator: bool = True
     ttp_relations_graph: bool = True
     mitre_mapper: bool = True
-    # EP-HARNESS upcoming toggles (config/manifest placeholders; runtime logic deferred)
+    # EP-HARNESS: inline Contract Gate (ep_harness.inline); the others are still placeholders
     enable_contract_gate: bool = False
     enable_semantic_verifier: bool = False
     policy_mode: str = "fixed"
