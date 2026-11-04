@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ep-harness/evidence_capsule/0.2",
+  "title": "Evidence Capsule v0.2",
+  "description": "Structured handoff between EP-HARNESS agents. Form only: this schema says nothing about whether evidence semantically supports a claim. Ledger-dependent rules (C2-C4, R1-R4) are enforced by ep_harness.gate.ContractGate.",
+  "type": "object",
+  "required": ["capsule_id", "kind", "task_id", "source", "dest", "claims"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "0.2"},
+    "capsule_id": {"type": "string", "pattern": "^CAP-[A-Za-z0-9_.:-]+$"},
+    "kind": {"enum": ["TASK", "FINDING", "VERIFIED", "ANALYSIS", "REPORT"]},
+    "task_id": {"type": "string"},
+    "source": {"enum": ["coordinator", "hunter", "verifier", "analyst", "reporter"]},
+    "dest": {"enum": ["hunter", "verifier", "analyst", "reporter", "output"]},
+    "attempt": {"type": "integer", "minimum": 1, "default": 1},
+    "supersedes": {
+      "description": "capsule_id of the terminal (RETRY_REQUIRED, REJECTED or UNRESOLVED) capsule this retry replaces; set iff attempt > 1.",
+      "type": ["string", "null"],
+      "pattern": "^CAP-[A-Za-z0-9_.:-]+$"
+    },
+    "parent_capsules": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^CAP-[A-Za-z0-9_.:-]+$"},
+      "uniqueItems": true
+    },
+    "claims": {"type": "array", "items": {"$ref": "#/$defs/claim"}},
+    "dropped_claims": {"type": "array", "items": {"$ref": "#/$defs/claim_drop"}},
+    "tools_used": {"type": "array", "items": {"type": "string"}},
+    "status": {
+      "description": "Agents may only propose. Every later status lives in the Evidence Ledger.",
+      "const": "PROPOSED"
+    },
+    "metadata": {"type": "object"}
+  },
+  "$defs": {
+    "claim_ref": {"type": "string", "pattern": "^CAP-[A-Za-z0-9_.:-]+#c[0-9]+$"},
+    "claim": {
+      "type": "object",
+      "required": ["claim_id", "text", "level"],
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {"type": "string", "pattern": "^c[0-9]+$"},
+        "text": {"type": "string", "minLength": 1},
+        "level": {"enum": ["OBSERVED", "INFERRED", "HYPOTHESIS"]},
+        "event_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "artifact_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "parent_claims": {"type": "array", "items": {"$ref": "#/$defs/claim_ref"}, "uniqueItems": true},
+        "derivation": {"enum": ["NEW", "CARRIED", "REFINED", "AGGREGATED"], "default": "NEW"},
+        "observables": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "ttp_candidates": {"type": "array", "items": {"type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$"}},
+        "lineage": {"enum": ["cited", "derived"], "default": "cited"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"derivation": {"const": "NEW"}}},
+          "then": {"properties": {"parent_claims": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"derivation": {"enum": ["CARRIED", "REFINED"]}}, "required": ["derivation"]},
+          "then": {"required": ["parent_claims"], "properties": {"parent_claims": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"derivation": {"const": "AGGREGATED"}}, "required": ["derivation"]},
+          "then": {"required": ["parent_claims"], "properties": {"parent_claims": {"minItems": 2}}}
+        }
+      ]
+    },
+    "claim_drop": {
+      "type": "object",
+      "required": ["ref", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {"$ref": "#/$defs/claim_ref"},
+        "reason": {"enum": ["REFUTED", "INSUFFICIENT_EVIDENCE", "DUPLICATE", "OUT_OF_SCOPE"]},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}
