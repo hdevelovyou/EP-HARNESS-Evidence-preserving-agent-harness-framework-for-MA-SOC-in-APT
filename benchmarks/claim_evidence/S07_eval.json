@@ -1,0 +1,127 @@
+{
+  "items": 261,
+  "reference_validity": {
+    "invalid_detection": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 16,
+      "fp": 0,
+      "fn": 0
+    },
+    "references": 267,
+    "true_rate": 0.9401,
+    "measured_rate": 0.9401
+  },
+  "provenance_completeness": {
+    "unanchored_detection": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 8,
+      "fp": 0,
+      "fn": 0
+    },
+    "claims": 253,
+    "true_rate": 0.9684,
+    "measured_rate": 0.9684
+  },
+  "semantic_support": {
+    "items": 237,
+    "accuracy": 0.9578,
+    "macro_f1": 0.9531,
+    "per_class": {
+      "SUPPORTED": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 68,
+        "fp": 0,
+        "fn": 0,
+        "n": 68
+      },
+      "UNRELATED": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 49,
+        "fp": 0,
+        "fn": 0,
+        "n": 49
+      },
+      "INSUFFICIENT": {
+        "precision": 0.8824,
+        "recall": 1.0,
+        "f1": 0.9375,
+        "tp": 75,
+        "fp": 10,
+        "fn": 0,
+        "n": 75
+      },
+      "CONTRADICTED": {
+        "precision": 1.0,
+        "recall": 0.7778,
+        "f1": 0.875,
+        "tp": 35,
+        "fp": 0,
+        "fn": 10,
+        "n": 45
+      }
+    },
+    "confusion": {
+      "SUPPORTED": {
+        "SUPPORTED": 68
+      },
+      "UNRELATED": {
+        "UNRELATED": 49
+      },
+      "INSUFFICIENT": {
+        "INSUFFICIENT": 75
+      },
+      "CONTRADICTED": {
+        "CONTRADICTED": 35,
+        "INSUFFICIENT": 10
+      }
+    },
+    "accuracy_by_family": {
+      "contradicted/order": 1.0,
+      "contradicted/time": 1.0,
+      "contradicted/wrong_parent": 0.0,
+      "inferred/beyond_parent": 0.0,
+      "inferred/restates_parent": 0.0,
+      "insufficient/co_occurrence": 1.0,
+      "insufficient/extra_entity": 1.0,
+      "insufficient/uncited": 1.0,
+      "insufficient/wrong_activity": 1.0,
+      "provenance/hypothesis": 1.0,
+      "reference/fabricated": 1.0,
+      "reference/mixed": 1.0,
+      "supported/order": 1.0,
+      "supported/parent_link": 1.0,
+      "supported/single": 1.0,
+      "supported/time": 1.0,
+      "unrelated/other_kind": 1.0,
+      "unrelated/same_kind": 1.0
+    }
+  },
+  "unsupported_claim_rate": {
+    "true_rate": 0.7131,
+    "measured_rate": 0.7131,
+    "absolute_error": 0.0,
+    "unsupported_detection": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 169,
+      "fp": 0,
+      "fn": 0
+    }
+  },
+  "guardrail_coverage": {
+    "items": 16,
+    "not_applicable": 16,
+    "note": "claims resting on parent claims need the Output Evidence Guardrail"
+  },
+  "scenario": "S07",
+  "split": "test"
+}

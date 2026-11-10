@@ -165,6 +165,22 @@
         "unmask": "path-like tokens, post-seal IOC scoring only",
         "markers_default": true
       }
+    },
+    {
+      "name": "claim_evidence_dataset",
+      "category": "observability_evaluation",
+      "version": "claim-evidence-1",
+      "enabled": true,
+      "config": {
+        "data": "benchmarks/claim_evidence",
+        "splits": {
+          "S16": "dev",
+          "S23": "dev",
+          "S07": "test"
+        },
+        "label_source": "construction",
+        "human_check": "annotation sheets + Cohen's kappa"
+      }
     }
   ]
 }
