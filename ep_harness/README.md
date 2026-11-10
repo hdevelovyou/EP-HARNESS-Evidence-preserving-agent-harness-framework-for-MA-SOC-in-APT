@@ -21,6 +21,7 @@ ep_harness/
   evidence_cards.py  ID-first index of a task's events that the Hunter picks evidence from
   policy.py          Adaptive Evidence-Triggered Policy: signals + budget -> action (POLICY_MODE=adaptive)
   policy_runner.py   Runs one task under the policy (filter, revise, rerun, review, stop)
+  label_guard.py     Masks ATT&CK technique IDs before the runtime; restores paths for post-seal IOC scoring
   semantic.py        Semantic evidence verification per claim: rules + one judge call (ENABLE_SEMANTIC_VERIFIER=1)
   semantic_bench.py  Synthetic perturbation benchmark for the semantic rules
   cli.py             `audit` command
@@ -39,6 +40,8 @@ Inline mode: `ENABLE_CONTRACT_GATE=1 python main.py ...`; see `docs/ep_harness/i
 Agent-cited claims: add `ENABLE_CITED_CLAIMS=1`; see `docs/ep_harness/cited_evidence_claims.md`.
 Semantic evidence verification: add `ENABLE_SEMANTIC_VERIFIER=1`; see `docs/ep_harness/semantic_evidence_verification.md`.
 Adaptive policy: add `POLICY_MODE=adaptive`; see `docs/ep_harness/adaptive_policy.md`.
+Label guard (always on) and model-free preflight: `python -m ep_harness.cli preflight --scenario S23 --masoc-repo .`;
+see `docs/ep_harness/label_guard.md`.
 
 ## Gate decisions
 

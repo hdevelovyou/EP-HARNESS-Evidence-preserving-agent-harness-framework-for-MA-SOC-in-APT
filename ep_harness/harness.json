@@ -151,6 +151,19 @@
           "llm_calls": 0
         }
       }
+    },
+    {
+      "name": "label_guard",
+      "category": "trust_boundary",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "always_on": true,
+        "pattern": "T\\d{4}(\\.\\d{3})?",
+        "pseudonym": "XTIDnn",
+        "markers_env": "MASK_SIMULATION_MARKERS",
+        "unmask": "path-like tokens, post-seal IOC scoring only"
+      }
     }
   ]
 }

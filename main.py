@@ -19,6 +19,7 @@ from agents.task_catalog import TASK_BY_ID, TASK_INVENTORY, clone_task
 from agents.verifier_agent import VerifierAgent
 from ep_harness.claim_parser import remove_claims_block
 from ep_harness.inline import InlineECH
+from ep_harness.label_guard import assert_no_labels, mask_labels, unmask_artifacts
 from ep_harness.policy import AdaptivePolicy
 from ep_harness.policy_runner import run_task
 from prompts import build_analyst_claims_contract
@@ -297,6 +298,20 @@ def _run_task_with_policy(
         record_task_failure(dag_state, task, output, reason, artifact=artifact)
 
 
+def _env_flag(name):
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _scoring_entities(evaluator, source, source_type, label_mapping):
+    """Entities for scoring: techniques from the masked source, everything else from restored artifact paths."""
+    masked = evaluator._extract_entities(source, source_type=source_type)
+    if not label_mapping:
+        return masked
+    restored = evaluator._extract_entities(unmask_artifacts(source, label_mapping), source_type=source_type)
+    restored["techniques"] = masked.get("techniques", [])
+    return restored
+
+
 def _is_verifier_ok(check_result):
     """Accept strict OK and OK-prefixed verifier explanations."""
     check_str = str(check_result or "").strip()
@@ -539,7 +554,16 @@ def _execute_agent_runtime(
         with get_openai_callback() as cb:
             print("\n[Extractor] Sanitizing telemetry and building deterministic evidence ledger...")
             sanitized_log = extractor.sanitize_raw_log(log_data)
+            # Invariant: no technique ID (a ground-truth label) reaches the Coordinator, the extractor or any agent.
+            label_mask = mask_labels(sanitized_log, markers=_env_flag("MASK_SIMULATION_MARKERS"))
+            sanitized_log = label_mask.text
+            assert_no_labels(sanitized_log, "sanitized telemetry")
             evidence_store = extractor.extract(sanitized_log)
+            assert_no_labels(evidence_store, "evidence store")
+            print(
+                f"[LabelGuard] Masked {label_mask.to_dict()['technique_ids']} technique ID(s) "
+                f"({sum(label_mask.counts.values())} occurrence(s)); no label left in the runtime input."
+            )
             evidence_store_path = os.path.join(run_dir, "evidence_store.json")
             with open(evidence_store_path, "w", encoding="utf-8") as f:
                 json.dump(evidence_store, f, ensure_ascii=False, indent=2)
@@ -1234,6 +1258,8 @@ def _execute_agent_runtime(
             "report_path": report_path,
             "report_str": report_str,
             "sanitized_log": sanitized_log,
+            # Post-seal only: pseudonym -> original, to restore artifact paths for IOC scoring.
+            "label_mask": label_mask.to_dict(),
             "evidence_store": evidence_store,
             "final_results": final_results,
             "deep_analysis": deep_analysis,
@@ -1284,18 +1310,20 @@ def evaluate_sealed_run(runtime_bundle, ground_truth_path=None, manifest_path=No
     evaluator = SOCEvaluator()
     reasoning_evaluator = ReasoningEvaluator()
 
-    pre_eval_entities = evaluator._extract_entities(
-        runtime_bundle["sanitized_log"],
-        source_type="log",
-    )
-    report_entities = evaluator._extract_entities(
-        sealed_report_str,
-        source_type="report",
-    )
+    # Techniques are scored on the masked texts (no credit for reading a path); IOCs on texts whose
+    # artifact paths are restored, so they can match the ground-truth artifacts.
+    label_mapping = (runtime_bundle.get("label_mask") or {}).get("mapping", {})
+    if label_mapping:
+        with open(os.path.join(run_dir, "label_mask.json"), "w", encoding="utf-8") as f:
+            json.dump(runtime_bundle["label_mask"], f, ensure_ascii=False, indent=2)
+    pre_eval_entities = _scoring_entities(evaluator, runtime_bundle["sanitized_log"], "log", label_mapping)
+    report_entities = _scoring_entities(evaluator, sealed_report_str, "report", label_mapping)
     if orchestration_toggles.ioc_curator:
-        curated_ioc_entities = evaluator._extract_entities(
+        curated_ioc_entities = _scoring_entities(
+            evaluator,
             curated_iocs.get("indicators", {}),
-            source_type="curated_iocs",
+            "curated_iocs",
+            label_mapping,
         )
         post_entities = _compose_scoring_entities(report_entities, curated_ioc_entities)
     else:
