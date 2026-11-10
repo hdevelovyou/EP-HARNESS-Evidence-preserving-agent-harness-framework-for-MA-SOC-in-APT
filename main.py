@@ -574,6 +574,9 @@ def _execute_agent_runtime(
                 last_hunter_output = None
                 last_artifact = None
                 task_log = extractor.build_task_view(task, evidence_store)
+                # Cited mode: the harness indexes the evidence so the Hunter picks IDs instead of searching for them.
+                evidence_cards = ech.evidence_cards(task_log) if ech is not None and ech.cited else ""
+                hunter_log = f"{evidence_cards}\n\n{task_log}" if evidence_cards else task_log
 
                 while not success and retries <= max_retries:
                     stage_prefix = "Debate Processing" if is_debate else "Processing"
@@ -589,7 +592,7 @@ def _execute_agent_runtime(
                             else ""
                         )
                         task_history = hunter.run(
-                            task_log,
+                            hunter_log,
                             assigned_tasks=[task],
                             upstream_context=upstream_context,
                             verifier_feedback=last_feedback,
@@ -621,7 +624,7 @@ def _execute_agent_runtime(
                             if _should_revise(hunter_feedback, debate_strategy, hunter_debate_started):
                                 debate_feedback_text = _feedback_text(hunter_feedback)
                                 task_history = hunter.run(
-                                    task_log,
+                                    hunter_log,
                                     assigned_tasks=[task],
                                     upstream_context=upstream_context,
                                     verifier_feedback=debate_feedback_text,

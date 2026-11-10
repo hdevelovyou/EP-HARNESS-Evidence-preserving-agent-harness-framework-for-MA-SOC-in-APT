@@ -88,7 +88,9 @@
           "hunter",
           "analyst"
         ],
-        "toggle": "ENABLE_CITED_CLAIMS"
+        "toggle": "ENABLE_CITED_CLAIMS",
+        "format_repair": true,
+        "auto_tag_threshold": 0.6
       }
     },
     {
@@ -112,6 +114,17 @@
         ],
         "trivial_df": 0.3,
         "time_tolerance_min": 10
+      }
+    },
+    {
+      "name": "evidence_cards",
+      "category": "system_prompts",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "toggle": "ENABLE_CITED_CLAIMS",
+        "agent": "hunter",
+        "placement": "before_task_view"
       }
     }
   ]

@@ -17,7 +17,8 @@ ep_harness/
   harness.json       Default manifest
   adapters/masoc.py  Reads MA-SOC evidence_store.json + soc_hunt_results.json
   inline.py          Inline gate between agents in main.py (ENABLE_CONTRACT_GATE=1)
-  claim_parser.py    Reads the ```evidence_claims block agents append (ENABLE_CITED_CLAIMS=1)
+  claim_parser.py    Reads (and repairs) the ```evidence_claims block agents append (ENABLE_CITED_CLAIMS=1)
+  evidence_cards.py  ID-first index of a task's events that the Hunter picks evidence from
   semantic.py        Semantic evidence verification per claim: rules + one judge call (ENABLE_SEMANTIC_VERIFIER=1)
   semantic_bench.py  Synthetic perturbation benchmark for the semantic rules
   cli.py             `audit` command

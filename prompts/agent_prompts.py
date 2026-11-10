@@ -183,13 +183,11 @@ def build_hunter_final_instruction(tool_audit):
 # --- EP-HARNESS evidence-claims contract (only with ENABLE_CITED_CLAIMS=1) ---
 
 _CLAIM_LEVEL_RULES = (
-    "Levels: OBSERVED = directly visible in the events you cite (cite at least one event_id); "
-    "INFERRED = follows from several cited events or parent claims but is not visible in any single event; "
-    "HYPOTHESIS = plausible but not shown by the evidence (it will never be reported as a finding). "
-    "Cite only event_id values that appear in the supplied events; never invent or guess an ID. "
-    "observables = values copied character for character from the cited events "
-    "(domain, IP, hash, file path, process or command-line fragment); leave it empty rather than paraphrase. "
-    "One factual statement per claim. Do not add claims only to look complete."
+    "Levels: OBSERVED = shown by the cards you picked; INFERRED = follows from several picked cards or "
+    "parent claims but no single card shows it; HYPOTHESIS = plausible but no card shows it (cite nothing; it "
+    "is never reported as a finding). Use only event IDs that appear on a card. "
+    "observables = values copied character for character from the picked cards; leave it empty rather than "
+    "paraphrase. One factual statement per claim. Do not add claims only to look complete."
 )
 
 
@@ -201,13 +199,17 @@ def _cited_claims_enabled():
 
 def build_hunter_claims_contract():
     return (
-        "Evidence claims (required). After the finding and before the Tool Execution Audit, add exactly one "
-        "fenced block in this form:\n"
+        "Evidence claims (required). Work evidence first, for each claim in this order:\n"
+        "1. evidence: pick the event IDs from the Evidence cards at the top of the log that show it;\n"
+        "2. observables: copy the exact values from those cards;\n"
+        "3. tools: name the tools from the Tool Execution Audit whose output supports it;\n"
+        "4. level, then text: write the statement last, saying no more than the picked cards show.\n"
+        "A statement you cannot pick a card for is a HYPOTHESIS. After the finding and before the Tool "
+        "Execution Audit, add exactly one block, fields in that order:\n"
         "```evidence_claims\n"
-        '[{"id": "c1", "text": "<one factual statement>", "level": "OBSERVED", '
-        '"event_ids": ["event-12"], "tools": ["rex_tool"], "observables": ["<exact value from event-12>"]}]\n'
+        '[{"id": "c1", "evidence": ["event-9"], "observables": ["csc.exe", "tmseiddy.dll"], '
+        '"tools": ["rex_tool"], "level": "OBSERVED", "text": "csc.exe created tmseiddy.dll"}]\n'
         "```\n"
-        "tools = the tools from the Tool Execution Audit whose output supports the claim. "
         f"{_CLAIM_LEVEL_RULES}"
     )
 
@@ -215,15 +217,17 @@ def build_hunter_claims_contract():
 def build_analyst_claims_contract():
     return (
         "Evidence claims (required). Each verified finding lists its claims with a ref such as "
-        "CAP-T7-VERIFIED-a1#c2. End every analytic statement line of your analysis (including table rows) "
-        "with its claim ID in square brackets, e.g. '... beaconing every 60 s [c3]'. Then end the analysis "
-        "with exactly one fenced block in this form:\n"
+        "CAP-T7-VERIFIED-a1#c2. Work evidence first, for each analytic statement:\n"
+        "1. parent_claims: pick the verified claim refs it builds on, copied exactly;\n"
+        "2. evidence: add event IDs only if the statement needs events beyond those claims;\n"
+        "3. level, then text: write the statement last. It may be stronger than its parent claims only if it "
+        "adds its own events.\n"
+        "End each statement line with its claim ID, e.g. '... [c3]' (lines you leave untagged are matched to "
+        "claims by the pipeline). End the analysis with exactly one block, fields in that order:\n"
         "```evidence_claims\n"
-        '[{"id": "c3", "text": "<the statement>", "level": "INFERRED", '
-        '"parent_claims": ["CAP-T7-VERIFIED-a1#c2"], "event_ids": ["event-12"], "observables": []}]\n'
+        '[{"id": "c3", "parent_claims": ["CAP-T7-VERIFIED-a1#c2"], "evidence": [], "observables": [], '
+        '"level": "INFERRED", "text": "<the statement>"}]\n'
         "```\n"
-        "parent_claims = refs of the verified claims the statement builds on, copied exactly. "
-        "A statement may be stronger than the claims it builds on only if it cites its own event_ids. "
         f"{_CLAIM_LEVEL_RULES}"
     )
 

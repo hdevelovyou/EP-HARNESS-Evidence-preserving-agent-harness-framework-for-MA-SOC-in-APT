@@ -43,7 +43,9 @@ from .adapters.masoc import (
     task_contracts_from_catalog,
 )
 from .capsule import Capsule, Claim, ClaimDrop, claim_ref
+from .evidence_cards import cards_for_task_view
 from .claim_parser import (
+    auto_tag_lines,
     FENCE,
     claims_from_records,
     drop_tagged_lines,
@@ -71,6 +73,7 @@ class HandoffOutcome:
     feedback: str = ""
     action: str = ""
     notes: list[str] = field(default_factory=list)
+    repairs: list[str] = field(default_factory=list)
 
     @property
     def accepted(self) -> bool:
@@ -88,6 +91,7 @@ class HandoffOutcome:
             "status": self.status,
             "violations": self.violations,
             "notes": self.notes,
+            "format_repairs": self.repairs,
             "action": self.action,
         }
 
@@ -161,7 +165,7 @@ class InlineECH:
         attempt = previous.attempt + 1
         return f"{base}-a{attempt}", attempt, previous.capsule_id
 
-    def _check(self, capsule: Capsule, edge: str, action_if_blocked: str, notes=()) -> HandoffOutcome:
+    def _check(self, capsule: Capsule, edge: str, action_if_blocked: str, notes=(), repairs=()) -> HandoffOutcome:
         result = self.gate.check(capsule)
         self.capsules.append(capsule)
         self.results.append(result)
@@ -174,6 +178,7 @@ class InlineECH:
             feedback="" if result.status == "ACCEPTED" else gate_feedback(capsule, result, notes),
             action="forward" if result.status == "ACCEPTED" else action_if_blocked,
             notes=list(notes),
+            repairs=list(repairs),
         )
         self.handoffs.append(outcome.to_dict())
         return outcome
@@ -214,11 +219,12 @@ class InlineECH:
     def hunter_handoff(self, task_id: str, hunter_output: str) -> HandoffOutcome:
         body, audit = split_tool_audit(hunter_output)
         artifact_ids = register_tool_artifacts(self.ledger, task_id, audit)
-        notes = []
+        notes, repairs = [], []
         if self.cited:
             parsed = extract_claims_block(body)
             claims = claims_from_records(parsed.records, artifacts_by_tool(audit, artifact_ids))
             notes = [parsed.error] if parsed.error else []
+            repairs = parsed.repairs
         else:
             claims = claims_from_text(body, self.obs_index, artifact_ids)
         capsule_id, attempt, supersedes = self._next_identity(task_id, "FINDING")
@@ -233,9 +239,9 @@ class InlineECH:
             attempt=attempt,
             supersedes=supersedes,
             metadata={"mode": "inline", "claim_source": self.claim_source,
-                      "level_source": "agent" if self.cited else "heuristic"},
+                      "level_source": "agent" if self.cited else "heuristic", "format_repairs": repairs},
         )
-        return self._check(capsule, "hunter->verifier", "return_to_hunter", notes)
+        return self._check(capsule, "hunter->verifier", "return_to_hunter", notes, repairs)
 
     def record_verifier(self, task_id: str, passed: bool, verdict: str = "") -> None:
         """Record the Verifier's semantic verdict on the latest gate-accepted FINDING."""
@@ -248,6 +254,10 @@ class InlineECH:
             "verifier",
             detail={"verdict": str(verdict)[:1000]},
         )
+
+    def evidence_cards(self, task_view: str) -> str:
+        """The ID-first index of a task view's events that the Hunter picks evidence from (cited mode)."""
+        return cards_for_task_view(task_view)
 
     # ---------------------------------------------------------------- semantic evidence verification
     def semantic_review(self, task_id: str) -> SemanticReport:
@@ -342,11 +352,12 @@ class InlineECH:
     def analyst_handoff(self, analysis_text: str) -> HandoffOutcome:
         parents = self._accepted_latest("VERIFIED")
         capsule_id, attempt, supersedes = self._next_identity(ANALYSIS_TASK, "ANALYSIS")
-        notes = []
+        notes, repairs = [], []
         if self.cited:
             parsed = extract_claims_block(analysis_text)
             claims = claims_from_records(parsed.records)
             notes = [parsed.error] if parsed.error else []
+            repairs = parsed.repairs
             parent_link = "cited"
         else:
             pairs = claim_lines(analysis_text, self.obs_index, [])
@@ -364,9 +375,10 @@ class InlineECH:
             attempt=attempt,
             supersedes=supersedes,
             metadata={"mode": "inline", "claim_source": self.claim_source,
-                      "level_source": "agent" if self.cited else "heuristic", "parent_link": parent_link},
+                      "level_source": "agent" if self.cited else "heuristic", "parent_link": parent_link,
+                      "format_repairs": repairs},
         )
-        return self._check(capsule, "analyst->reporter", "retry_analyst_or_withhold_claims", notes)
+        return self._check(capsule, "analyst->reporter", "retry_analyst_or_withhold_claims", notes, repairs)
 
     def analysis_for_reporter(self, analysis_text: str, outcome: HandoffOutcome) -> str:
         """The analysis text the Reporter may see.
@@ -375,7 +387,8 @@ class InlineECH:
         the lines tagged with that claim ID; derived: the claim's own line).
         Capsule-level violations (no accepted parents, no readable claims
         block) cannot be fixed by filtering; they stay recorded in the ledger.
-        In cited mode the claims block and the [cN] tags are removed.
+        In cited mode the claims block and the [cN] tags are removed; lines the
+        Analyst forgot to tag are tagged by the harness first (auto_tag_lines).
         """
         text = str(analysis_text or "")
         if outcome.accepted:
@@ -383,10 +396,10 @@ class InlineECH:
         capsule = self.ledger.capsule(outcome.capsule_id)
         flagged = sorted({v["claim_index"] for v in outcome.violations if v["claim_index"] is not None})
         flagged = [i for i in flagged if i < len(capsule.claims)]
+        auto_tagged = 0
         if self.cited:
-            text = strip_claim_tags(
-                drop_tagged_lines(remove_claims_block(text), [capsule.claims[i].claim_id for i in flagged])
-            )
+            narrative, auto_tagged = auto_tag_lines(remove_claims_block(text), capsule.claims)
+            text = strip_claim_tags(drop_tagged_lines(narrative, [capsule.claims[i].claim_id for i in flagged]))
         else:
             line_index = self._line_index.get(outcome.capsule_id, [])
             drop_lines = {line_index[i] for i in flagged if i < len(line_index)}
@@ -399,6 +412,7 @@ class InlineECH:
             "withheld_claims": [claim_ref(capsule.capsule_id, capsule.claims[i].claim_id) for i in flagged],
             "capsule_level_violations": [v["code"] for v in outcome.violations if v["claim_index"] is None],
             "notes": outcome.notes,
+            "auto_tagged_lines": auto_tagged,
         })
         return text
 
@@ -434,12 +448,25 @@ class InlineECH:
                     detail={"reason": "no_verifier_verdict"},
                 )
 
+    def _assist_summary(self) -> dict:
+        """What the harness did so the model did not have to: format repairs and lines it tagged itself."""
+        repairs: dict[str, int] = {}
+        for handoff in self.handoffs:
+            for repair in handoff.get("format_repairs", []):
+                repairs[repair] = repairs.get(repair, 0) + 1
+        return {
+            "format_repairs": repairs,
+            "handoffs_repaired": sum(1 for h in self.handoffs if h.get("format_repairs")),
+            "auto_tagged_lines": sum(h.get("auto_tagged_lines", 0) for h in self.handoffs),
+        }
+
     def summary(self) -> dict:
         return {
             "mode": "inline",
             "claim_source": self.claim_source,
             "summary": summarize(self.capsules, self.results),
             "semantic": semantic_summary(self.ledger),
+            "harness_assist": self._assist_summary(),
             "handoffs": self.handoffs,
             "ledger_counts": self.ledger.counts(),
         }

@@ -14,14 +14,30 @@ ENABLE_CONTRACT_GATE=1 ENABLE_CITED_CLAIMS=1 python main.py ...
 checks the claims block. With the flag off, prompts are unchanged from MA-SOC and the gate uses claims derived from
 free text (`derived`).
 
+## Design rule: the harness carries the work, not the model
+
+Citing evidence is easy for a strong model and error-prone for a weak one. Each step a weak model gets wrong is
+therefore done or checked by the harness, so the choice of model matters as little as possible:
+
+| Step a model can get wrong | What the harness does |
+|---|---|
+| Finding the right event ID in a ~110 000-character task view | **Evidence cards** (`ep_harness/evidence_cards.py`): one line per event, ID first, then time, activity (event code), actor -> object and command line, read from the event's own fields. Placed before the task view (~6 700 characters for an S23 task) |
+| Writing the statement first and looking for evidence afterwards | The contracts ask for **evidence first**: pick cards, copy observables, name tools, then write the statement; the example block lists `evidence` before `text` |
+| Small format slips | **Deterministic repair** in the parser: a ```json fence or an unfenced list, trailing commas, single quotes, typographic quotes, separate objects, other field names (`evidence`, `events`, `statement`, `claim_id`…), `Event 9`, `observed`, `C1`. Every repair is recorded (`format_repairs`); only an unreadable block goes back to the agent |
+| Forgetting a `[cN]` tag on an Analyst line | **Auto-tagging**: an untagged line that contains a claim's text, or 60% of its words, gets that claim's tag, so a blocked claim is still removed |
+
+`ech_inline_audit.json` → `harness_assist` reports how often the harness stepped in (`format_repairs`,
+`handoffs_repaired`, `auto_tagged_lines`), so that the share of the work done by the harness can be compared
+across models.
+
 ## Format agents must emit
 
 The Hunter and the Analyst end their answer with **exactly one** block:
 
 ````
 ```evidence_claims
-[{"id": "c1", "text": "...", "level": "OBSERVED", "event_ids": ["event-9"],
-  "tools": ["rex_tool"], "observables": ["csc.exe", "tmseiddy.dll"]}]
+[{"id": "c1", "evidence": ["event-9"], "observables": ["csc.exe", "tmseiddy.dll"],
+  "tools": ["rex_tool"], "level": "OBSERVED", "text": "csc.exe created tmseiddy.dll"}]
 ```
 ````
 
@@ -29,7 +45,7 @@ The Hunter and the Analyst end their answer with **exactly one** block:
 |---|---|---|---|
 | `id` | required | required, matches the `[cN]` tag in the text | `claim_id` (`C2`, `2` → `c2`) |
 | `text`, `level` | required | required | kept as is; level upper-cased |
-| `event_ids` | events in the task log | events in the evidence | `event_ids` |
+| `evidence` (or `event_ids`) | event IDs from the evidence cards | events beyond the parent claims, if needed | `event_ids` |
 | `tools` | tools in the Tool Execution Audit | — | the task's `artifact_ids`; a tool that did not run successfully → an ID that does not exist → C3 REJECTED |
 | `parent_claims` | — | refs of VERIFIED claims, e.g. `CAP-T7-VERIFIED-a1#c1` | `parent_claims`; `derivation` defaults from the number of parents |
 | `observables` | values copied verbatim from the events | as for the Hunter | `observables` → R3 |
@@ -62,7 +78,9 @@ tags). The summarizer receives the Hunter output without the claims block, so th
 
 ## Known limits
 
-- **Untagged** Analyst narrative lines still reach the Reporter unchecked.
+- Analyst lines that neither carry a tag nor match a claim (auto-tagging) still reach the Reporter unchecked.
+- Whether evidence cards and evidence-first ordering actually narrow the gap between models has not been measured:
+  that needs runs with several real models.
 - The Verifier does not emit claims yet: VERIFIED still carries (CARRIED) every FINDING claim; the Verifier does not
   declare dropped claims (`dropped_claims`).
 - The Reporter does not emit a claims block (so the `FINAL_REPORT_SOC.md` format read by the evaluator does not
