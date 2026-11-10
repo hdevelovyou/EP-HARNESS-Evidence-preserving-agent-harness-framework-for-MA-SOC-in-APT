@@ -18,6 +18,8 @@ ep_harness/
   adapters/masoc.py  Reads MA-SOC evidence_store.json + soc_hunt_results.json
   inline.py          Inline gate between agents in main.py (ENABLE_CONTRACT_GATE=1)
   claim_parser.py    Reads the ```evidence_claims block agents append (ENABLE_CITED_CLAIMS=1)
+  semantic.py        Semantic evidence verification per claim: rules + one judge call (ENABLE_SEMANTIC_VERIFIER=1)
+  semantic_bench.py  Synthetic perturbation benchmark for the semantic rules
   cli.py             `audit` command
 ```
 
@@ -32,6 +34,7 @@ Tests (no pytest needed): `python tests/run_tests.py`
 
 Inline mode: `ENABLE_CONTRACT_GATE=1 python main.py ...`; see `docs/ep_harness/inline_contract_gate.md`.
 Agent-cited claims: add `ENABLE_CITED_CLAIMS=1`; see `docs/ep_harness/cited_evidence_claims.md`.
+Semantic evidence verification: add `ENABLE_SEMANTIC_VERIFIER=1`; see `docs/ep_harness/semantic_evidence_verification.md`.
 
 ## Gate decisions
 

@@ -37,6 +37,7 @@ if "pytest" not in sys.modules:
 import test_capsule_schema  # noqa: E402
 import test_inline_gate  # noqa: E402
 import test_cited_claims  # noqa: E402
+import test_semantic  # noqa: E402
 import test_core  # noqa: E402
 
 fixtures = {
@@ -44,7 +45,7 @@ fixtures = {
     "registry": test_core.registry(),
 }
 
-MODULES = (test_capsule_schema, test_core, test_inline_gate, test_cited_claims)
+MODULES = (test_capsule_schema, test_core, test_inline_gate, test_cited_claims, test_semantic)
 # Optional arguments pick modules, e.g. `python tests/run_tests.py test_capsule_schema`.
 selected = set(sys.argv[1:])
 unknown = selected - {m.__name__ for m in MODULES}

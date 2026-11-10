@@ -11,6 +11,7 @@ from .agent_prompts import (
     build_debate_judge_prompt,
     build_debate_soft_test_prompt,
     build_reporter_prompt,
+    build_semantic_judge_messages,
     build_verifier_prompt,
 )
 
@@ -27,5 +28,6 @@ __all__ = [
     "build_debate_judge_prompt",
     "build_debate_soft_test_prompt",
     "build_reporter_prompt",
+    "build_semantic_judge_messages",
     "build_verifier_prompt",
 ]

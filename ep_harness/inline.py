@@ -42,7 +42,7 @@ from .adapters.masoc import (
     split_tool_audit,
     task_contracts_from_catalog,
 )
-from .capsule import Capsule, Claim, claim_ref
+from .capsule import Capsule, Claim, ClaimDrop, claim_ref
 from .claim_parser import (
     FENCE,
     claims_from_records,
@@ -53,7 +53,8 @@ from .claim_parser import (
 )
 from .contracts import TaskContract, default_masoc_registry
 from .gate import ContractGate, GateResult
-from .metrics import summarize
+from .metrics import semantic_summary, summarize
+from .semantic import SemanticReport, SemanticVerifier, apply_judge, judge_items, parse_judge_verdicts
 
 ANALYSIS_TASK = "ANALYSIS"
 REPORT_TASK = "REPORT"
@@ -129,6 +130,8 @@ class InlineECH:
         self.handoffs: list[dict] = []
         self._latest: dict[tuple[str, str], Capsule] = {}
         self._line_index: dict[str, list[int]] = {}
+        self.semantic = SemanticVerifier(self.ledger)
+        self._semantic_reports: dict[str, SemanticReport] = {}
 
     @property
     def cited(self) -> bool:
@@ -246,25 +249,78 @@ class InlineECH:
             detail={"verdict": str(verdict)[:1000]},
         )
 
+    # ---------------------------------------------------------------- semantic evidence verification
+    def semantic_review(self, task_id: str) -> SemanticReport:
+        """Rule layer on the latest gate-accepted FINDING: one verdict per claim, no LLM call."""
+        return self.semantic.check(self._latest[(task_id, "FINDING")])
+
+    def judge_items(self, task_id: str, report: SemanticReport) -> list[dict]:
+        """What the Verifier's judge call sees: only the claims the rules found SUPPORTED, with their events."""
+        return judge_items(report, self._latest[(task_id, "FINDING")], self.ledger)
+
+    def apply_judge(self, report: SemanticReport, judge_answer: str) -> SemanticReport:
+        judgements, error = parse_judge_verdicts(judge_answer)
+        return apply_judge(report, judgements, error)
+
+    def finish_semantic_review(self, task_id: str, report: SemanticReport) -> SemanticReport:
+        """Record every claim verdict, then the Verifier's decision on the FINDING.
+
+        The FINDING is ACCEPTED when at least one claim is SUPPORTED; the
+        VERIFIED capsule then carries only what the verdicts allow
+        (verifier_handoff). Otherwise it is REJECTED and the Hunter gets the
+        verdicts as feedback.
+        """
+        finding = self._latest[(task_id, "FINDING")]
+        for verdict in report.verdicts:
+            self.ledger.record_claim_verdict(verdict.ref, verdict.verdict, "verifier", verdict.to_dict())
+        self.ledger.record_decision(
+            finding.capsule_id,
+            "ACCEPTED" if report.accepted else "REJECTED",
+            "verifier",
+            detail={"semantic": report.counts()},
+        )
+        self._semantic_reports[finding.capsule_id] = report
+        self.handoffs.append({"edge": "hunter->verifier", "capsule_id": finding.capsule_id,
+                              "action": "semantic_review", "counts": report.counts()})
+        return report
+
+    def _verified_claims(self, finding: Capsule) -> tuple[tuple[Claim, ...], tuple[ClaimDrop, ...]]:
+        """Carry SUPPORTED claims, carry INSUFFICIENT ones as HYPOTHESIS, drop UNRELATED and CONTRADICTED."""
+        report = self._semantic_reports.get(finding.capsule_id)
+        claims, drops = [], []
+        for c in finding.claims:
+            ref = claim_ref(finding.capsule_id, c.claim_id)
+            verdict = report.verdict(c.claim_id) if report else None
+            carried = replace(c, parent_claims=(ref,), derivation="CARRIED")
+            if verdict is None or verdict.verdict in ("SUPPORTED", "NOT_APPLICABLE"):
+                claims.append(carried)
+            elif verdict.verdict == "INSUFFICIENT":
+                claims.append(replace(carried, level="HYPOTHESIS"))
+            elif verdict.verdict == "UNRELATED":
+                drops.append(ClaimDrop(ref, "INSUFFICIENT_EVIDENCE", "cited evidence is unrelated to the claim"))
+            else:
+                drops.append(ClaimDrop(ref, "REFUTED", "; ".join(verdict.reasons)[:300]))
+        return tuple(claims), tuple(drops)
+
     # ---------------------------------------------------------------- Verifier -> Analyst
     def verifier_handoff(self, task_id: str) -> HandoffOutcome:
         finding = self._latest[(task_id, "FINDING")]
         capsule_id, attempt, supersedes = self._next_identity(task_id, "VERIFIED")
+        # Without a semantic review, MA-SOC's Verifier passes the whole finding on unchanged.
+        claims, drops = self._verified_claims(finding)
         capsule = Capsule(
             capsule_id=capsule_id,
             kind="VERIFIED",
             task_id=task_id,
             source="verifier",
             dest="analyst",
-            # MA-SOC's Verifier passes the whole finding on unchanged.
-            claims=tuple(
-                replace(c, parent_claims=(claim_ref(finding.capsule_id, c.claim_id),), derivation="CARRIED")
-                for c in finding.claims
-            ),
+            claims=claims,
+            dropped_claims=drops,
             parent_capsules=(finding.capsule_id,),
             attempt=attempt,
             supersedes=supersedes,
-            metadata={"mode": "inline", "claim_source": self.claim_source},
+            metadata={"mode": "inline", "claim_source": self.claim_source,
+                      "semantic_review": finding.capsule_id in self._semantic_reports},
         )
         return self._check(capsule, "verifier->analyst", "exclude_from_analyst")
 
@@ -383,6 +439,7 @@ class InlineECH:
             "mode": "inline",
             "claim_source": self.claim_source,
             "summary": summarize(self.capsules, self.results),
+            "semantic": semantic_summary(self.ledger),
             "handoffs": self.handoffs,
             "ledger_counts": self.ledger.counts(),
         }

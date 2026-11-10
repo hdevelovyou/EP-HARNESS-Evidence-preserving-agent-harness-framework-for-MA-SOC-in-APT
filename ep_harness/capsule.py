@@ -82,6 +82,9 @@ STATUS_TRANSITIONS: dict[str, dict[str, tuple[str, ...]]] = {
 }
 TERMINAL_STATUSES = tuple(s for s, nxt in STATUS_TRANSITIONS.items() if not nxt)
 
+# Semantic verdict on one claim against the evidence it cites (ep_harness.semantic).
+CLAIM_VERDICTS = ("SUPPORTED", "INSUFFICIENT", "UNRELATED", "CONTRADICTED", "NOT_APPLICABLE")
+
 # How the event references were obtained.
 #   cited   - the agent named the event IDs itself
 #   derived - the harness recovered them by matching observables to the ledger

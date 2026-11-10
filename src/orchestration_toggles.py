@@ -43,8 +43,8 @@ class OrchestrationToggles:
     ioc_curator: bool = True
     ttp_relations_graph: bool = True
     mitre_mapper: bool = True
-    # EP-HARNESS: inline Contract Gate (ep_harness.inline) and agent-cited evidence claims;
-    # the others are still placeholders
+    # EP-HARNESS: inline Contract Gate (ep_harness.inline), agent-cited evidence claims and
+    # semantic evidence verification (ep_harness.semantic); the others are still placeholders
     enable_contract_gate: bool = False
     enable_cited_claims: bool = False
     enable_semantic_verifier: bool = False
@@ -71,6 +71,9 @@ def load_orchestration_toggles():
     if toggles.enable_cited_claims and not toggles.enable_contract_gate:
         # The claims block is only parsed and checked by the inline gate.
         raise ValueError("ENABLE_CITED_CLAIMS=1 requires ENABLE_CONTRACT_GATE=1.")
+    if toggles.enable_semantic_verifier and not toggles.enable_contract_gate:
+        # Semantic review runs on capsules the inline gate has already accepted.
+        raise ValueError("ENABLE_SEMANTIC_VERIFIER=1 requires ENABLE_CONTRACT_GATE=1.")
     return toggles
 
 

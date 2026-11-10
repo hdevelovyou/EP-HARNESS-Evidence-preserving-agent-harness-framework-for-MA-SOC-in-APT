@@ -669,13 +669,26 @@ def _execute_agent_runtime(
                                 "Verifier not called."
                             )
                             check_result = gate_outcome.feedback
+                        elif ech is not None and orchestration_toggles.enable_semantic_verifier:
+                            # Claim-level review: rules first, then one judge call only for claims they could not reject.
+                            semantic_report = ech.semantic_review(task["id"])
+                            if semantic_report.pending_judge:
+                                judge_answer = verifier.judge_claims(
+                                    task["name"],
+                                    ech.judge_items(task["id"], semantic_report),
+                                )
+                                semantic_report = ech.apply_judge(semantic_report, judge_answer)
+                            semantic_report = ech.finish_semantic_review(task["id"], semantic_report)
+                            print(f"    [SEMANTIC] {semantic_report.capsule_id}: {semantic_report.counts()}")
+                            check_result = semantic_report.feedback()
                         else:
                             check_result = verifier.verify(task["name"], hunter_output, task_log)
                         check_str = str(check_result).strip()
 
                         verifier_handoff = None
                         if ech is not None and not gate_blocked:
-                            ech.record_verifier(task["id"], _is_verifier_ok(check_str), check_str)
+                            if not orchestration_toggles.enable_semantic_verifier:
+                                ech.record_verifier(task["id"], _is_verifier_ok(check_str), check_str)
                             if _is_verifier_ok(check_str):
                                 verifier_handoff = ech.verifier_handoff(task["id"])
 

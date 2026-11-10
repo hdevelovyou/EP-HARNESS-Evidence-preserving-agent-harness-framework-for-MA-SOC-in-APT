@@ -90,6 +90,29 @@
         ],
         "toggle": "ENABLE_CITED_CLAIMS"
       }
+    },
+    {
+      "name": "semantic_evidence_verifier",
+      "category": "hooks_middleware",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "toggle": "ENABLE_SEMANTIC_VERIFIER",
+        "requires": "ENABLE_CONTRACT_GATE",
+        "verdicts": [
+          "SUPPORTED",
+          "INSUFFICIENT",
+          "UNRELATED",
+          "CONTRADICTED",
+          "NOT_APPLICABLE"
+        ],
+        "layers": [
+          "rules",
+          "judge"
+        ],
+        "trivial_df": 0.3,
+        "time_tolerance_min": 10
+      }
     }
   ]
 }
