@@ -14,10 +14,10 @@ from pathlib import Path
 from ep_harness.inline import InlineECH
 
 REPO = Path(__file__).resolve().parents[1]
-GOOD_T7 = "Outbound C2 contact to compdatasystems.com observed from the beacon host 10.10.12.110."
+GOOD_T7 = "Outbound C2 contact to 172.31.234.82 observed from splunkd.exe on the workstation."
 FAKE_T7 = "Scheduled task persistence created at 02:00 according to event-9999 in the Security log."
-T3_BODY = "Beacon traffic to compdatasystems.com repeated at a fixed interval overnight."
-ANALYSIS_GOOD = "C2 beaconing to compdatasystems.com from 10.10.12.110 is confirmed by the verified findings."
+T3_BODY = "Beacon traffic to 172.31.234.82 repeated at a fixed interval."
+ANALYSIS_GOOD = "C2 traffic to 172.31.234.82 from splunkd.exe is confirmed by the verified findings."
 ANALYSIS_FAKE = "Lateral movement to the domain controller is recorded in event-9999 of the Security log."
 
 
@@ -198,7 +198,7 @@ def install_script(main, calls):
 
 def run_stubbed(tmp_path, gate_enabled):
     calls = {"hunter": [], "verifier": [], "analyst": [], "reporter": []}
-    raw = (REPO / "datasets" / "CobaltStrike_Lockbit" / "artifacts.json").read_text(encoding="utf-8")
+    raw = (REPO / "extracted_scenarios" / "S23_telemetry.json").read_text(encoding="utf-8")
     with stubbed_main(tmp_path, gate_enabled) as main:
         install_script(main, calls)
         bundle = main._execute_agent_runtime(raw, scenario_name="STUB", strategy="hierarchical")

@@ -1,4 +1,4 @@
-"""Tests for the EP-HARNESS ECH core, using the real CobaltStrike_Lockbit dataset.
+"""Tests for the EP-HARNESS ECH core, using the real S23 Windows-APT scenario.
 
 Set MASOC_REPO to the MA-SOC repository root (default: this repository).
 """
@@ -22,8 +22,9 @@ def evidence_store():
     sys.path.insert(0, str(MASOC_REPO))
     from src.extractor import EvidenceExtractor  # MA-SOC's own extractor, unchanged
 
-    raw = (MASOC_REPO / "datasets" / "CobaltStrike_Lockbit" / "artifacts.json").read_text(encoding="utf-8")
-    return EvidenceExtractor().extract(raw)
+    extractor = EvidenceExtractor()
+    raw = (MASOC_REPO / "extracted_scenarios" / "S23_telemetry.json").read_text(encoding="utf-8")
+    return extractor.extract(extractor.sanitize_raw_log(raw))
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +67,7 @@ def test_ledger_roundtrip(tmp_path, evidence_store, registry):
 
 # ------------------------------------------------------------ gate decisions
 def test_good_finding_is_accepted(evidence_store, registry):
-    body = "Outbound C2 contact to compdatasystems.com observed from the beacon host 10.10.12.110."
+    body = "Outbound C2 contact to 172.31.234.82 observed from splunkd.exe on the workstation."
     report = audit_hunt_results(evidence_store, [hunt_item("T7", body, ["ner_tool", "rex_tool", "sum_tool"])], registry)
     finding = report["per_task"][0]["finding_gate"]
     assert finding["status"] == "ACCEPTED", finding
@@ -75,7 +76,7 @@ def test_good_finding_is_accepted(evidence_store, registry):
 
 
 def test_missing_mandatory_tool_requires_retry(evidence_store, registry):
-    body = "Malware staging observed via compdatasystems.com download in the process tree."
+    body = "Tool staging observed via a github.com download in the process tree."
     report = audit_hunt_results(evidence_store, [hunt_item("T1", body, ["ner_tool"])], registry)
     finding = report["per_task"][0]["finding_gate"]
     assert finding["status"] == "RETRY_REQUIRED"
@@ -131,7 +132,7 @@ def test_cli_audit_on_run_dir(tmp_path, evidence_store):
     run = tmp_path / "run"
     run.mkdir()
     (run / "evidence_store.json").write_text(json.dumps(evidence_store), encoding="utf-8")
-    items = [hunt_item("T7", "Contact to compdatasystems.com from 10.10.12.110 observed.",
+    items = [hunt_item("T7", "Contact to 172.31.234.82 over http://172.31.234.82:8888 observed.",
                        ["ner_tool", "rex_tool", "sum_tool"])]
     (run / "soc_hunt_results.json").write_text(json.dumps(items), encoding="utf-8")
     out = tmp_path / "report.json"

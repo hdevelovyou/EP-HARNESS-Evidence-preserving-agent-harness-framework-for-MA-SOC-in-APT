@@ -329,7 +329,7 @@ class SemanticVerifier:
         text = claim.text.lower()
         # Only entity-shaped values: a plain word ("file", "system") in a field is not something a claim names.
         known = {a for a in self.vocabulary() if len(a) <= 200 and _ENTITY_SHAPE.search(a) and mentions(text, a)}
-        # Keep the longest form: "dfg.exe" makes the bare stem "dfg" redundant.
+        # Keep the longest form: "csc.exe" makes the bare stem "csc" redundant.
         known = {a for a in known if not any(a != b and a in b for b in known)}
         return claim_anchors(claim) | known
 

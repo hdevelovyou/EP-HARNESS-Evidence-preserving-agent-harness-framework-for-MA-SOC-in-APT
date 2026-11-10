@@ -20,8 +20,8 @@ The Hunter and the Analyst end their answer with **exactly one** block:
 
 ````
 ```evidence_claims
-[{"id": "c1", "text": "...", "level": "OBSERVED", "event_ids": ["event-28"],
-  "tools": ["rex_tool"], "observables": ["dfg.exe", "10.10.12.110"]}]
+[{"id": "c1", "text": "...", "level": "OBSERVED", "event_ids": ["event-9"],
+  "tools": ["rex_tool"], "observables": ["csc.exe", "tmseiddy.dll"]}]
 ```
 ````
 

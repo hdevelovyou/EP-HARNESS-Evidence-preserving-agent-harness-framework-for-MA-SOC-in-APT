@@ -14,7 +14,7 @@ This measures whether the rules separate the four cases on real telemetry
 fields. It does not measure LLM-written claims, and the templates are simple,
 so its scores are an upper bound for the rule layer, not field performance.
 
-    python -m ep_harness.semantic_bench --dataset datasets/CobaltStrike_Lockbit/artifacts.json --masoc-repo .
+    python -m ep_harness.semantic_bench --dataset extracted_scenarios/S23_telemetry.json --masoc-repo .
 """
 
 from __future__ import annotations
