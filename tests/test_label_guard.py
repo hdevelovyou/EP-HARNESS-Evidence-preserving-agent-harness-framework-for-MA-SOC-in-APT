@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from ep_harness.cli import preflight
-from ep_harness.label_guard import LabelLeakError, assert_no_labels, find_labels, mask_labels, unmask_artifacts
+from ep_harness.label_guard import MARKERS, LabelLeakError, assert_no_labels, find_labels, mask_labels, unmask_artifacts
 from test_inline_gate import stubbed_main
 
 REPO = Path(__file__).resolve().parents[1]
@@ -35,10 +35,14 @@ def test_leak_check_stops_the_run():
         mask_labels("already has XTID07 in it")
 
 
-def test_optional_marker_masking():
+def test_marker_masking_and_restoring_the_path():
     mask = mask_labels(LOG, markers=True)
     assert "atomics" not in mask.text.lower() and "atomicredteam" not in mask.text.lower()
     assert {v for k, v in mask.mapping.items() if k.startswith("XSIM")} == {"AtomicRedTeam", "atomics"}
+    path = r"C:\AtomicRedTeam\atomics\T1566.001\bin\PhishingAttachment.xlsm"
+    masked = mask_labels(path, markers=True)
+    assert masked.text == r"C:\XSIM01\XSIM02\XTID01\bin\PhishingAttachment.xlsm"
+    assert unmask_artifacts(masked.text, masked.mapping) == path   # the IOC path is whole again for scoring
 
 
 # ------------------------------------------------------------ unmasking for evaluation
@@ -100,7 +104,8 @@ def test_main_masks_before_any_agent_sees_the_telemetry(tmp_path):
         main.CoordinatorAgent, main.AnalystAgent, main.ReporterAgent = Coordinator, Analyst, Reporter
         bundle = main._execute_agent_runtime(raw, scenario_name="LBL", strategy="hierarchical")
     assert seen and all(find_labels(text) == [] for text in seen)
+    assert all(not MARKERS.search(text) for text in seen)         # simulation markers are masked by default
     run_dir = Path(tmp_path) / bundle["run_dir"]
     assert find_labels((run_dir / "evidence_store.json").read_text(encoding="utf-8")) == []
-    assert bundle["label_mask"]["technique_ids"] == 5
+    assert bundle["label_mask"]["technique_ids"] == 5 and bundle["label_mask"]["markers"] == 4
     assert not (run_dir / "label_mask.json").exists()           # written only by the post-seal evaluation

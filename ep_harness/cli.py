@@ -33,7 +33,7 @@ def load_task_inventory(masoc_repo: str | None):
     return module.TASK_INVENTORY
 
 
-def preflight(telemetry: Path, masoc_repo: Path, markers: bool = False) -> dict:
+def preflight(telemetry: Path, masoc_repo: Path, markers: bool = True) -> dict:
     """What the runtime would hand to the agents, checked for labels, without calling any model."""
     sys.path.insert(0, str(masoc_repo))
     from src.extractor import EvidenceExtractor  # MA-SOC's own extractor, unchanged
@@ -68,13 +68,14 @@ def main(argv=None) -> int:
     source.add_argument("--scenario", help="scenario id, read from extracted_scenarios/<id>_telemetry.json")
     source.add_argument("--telemetry", help="explicit telemetry JSON path")
     check.add_argument("--masoc-repo", default=".", help="repo root holding src/extractor.py")
-    check.add_argument("--mask-markers", action="store_true", help="also mask simulation markers")
+    check.add_argument("--keep-markers", action="store_true",
+                       help="leave simulation markers unmasked (the runtime masks them unless MASK_SIMULATION_MARKERS=0)")
     args = parser.parse_args(argv)
 
     if args.command == "preflight":
         repo = Path(args.masoc_repo)
         telemetry = Path(args.telemetry) if args.telemetry else repo / "extracted_scenarios" / f"{args.scenario}_telemetry.json"
-        report = preflight(telemetry, repo, markers=args.mask_markers)
+        report = preflight(telemetry, repo, markers=not args.keep_markers)
         report["masked"].pop("mapping")  # pseudonym -> label stays out of the console
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ok"] else 1

@@ -298,8 +298,9 @@ def _run_task_with_policy(
         record_task_failure(dag_state, task, output, reason, artifact=artifact)
 
 
-def _env_flag(name):
-    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+def _env_flag(name, default=False):
+    raw = os.getenv(name, "").strip().lower()
+    return default if not raw else raw in {"1", "true", "yes", "on"}
 
 
 def _scoring_entities(evaluator, source, source_type, label_mapping):
@@ -555,13 +556,14 @@ def _execute_agent_runtime(
             print("\n[Extractor] Sanitizing telemetry and building deterministic evidence ledger...")
             sanitized_log = extractor.sanitize_raw_log(log_data)
             # Invariant: no technique ID (a ground-truth label) reaches the Coordinator, the extractor or any agent.
-            label_mask = mask_labels(sanitized_log, markers=_env_flag("MASK_SIMULATION_MARKERS"))
+            label_mask = mask_labels(sanitized_log, markers=_env_flag("MASK_SIMULATION_MARKERS", default=True))
             sanitized_log = label_mask.text
             assert_no_labels(sanitized_log, "sanitized telemetry")
             evidence_store = extractor.extract(sanitized_log)
             assert_no_labels(evidence_store, "evidence store")
             print(
-                f"[LabelGuard] Masked {label_mask.to_dict()['technique_ids']} technique ID(s) "
+                f"[LabelGuard] Masked {label_mask.to_dict()['technique_ids']} technique ID(s) and "
+                f"{label_mask.to_dict()['markers']} simulation marker(s) "
                 f"({sum(label_mask.counts.values())} occurrence(s)); no label left in the runtime input."
             )
             evidence_store_path = os.path.join(run_dir, "evidence_store.json")

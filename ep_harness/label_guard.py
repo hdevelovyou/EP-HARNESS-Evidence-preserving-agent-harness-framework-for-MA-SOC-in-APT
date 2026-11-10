@@ -8,7 +8,8 @@ evidence extractor sees the telemetry:
   mask_labels      replaces every technique ID with a stable pseudonym
                    (T1566.001 -> XTID03), the same ID always the same pseudonym,
                    so paths stay distinct and consistent across events;
-                   optionally also the simulation markers (atomic-red-team, ...)
+                   and the simulation markers (atomic-red-team, atomics, ...),
+                   which reveal an Atomic Red Team emulation (on by default in main.py)
   assert_no_labels stops the run if any technique ID is still present
 
 After the report is sealed, evaluation needs the real paths to match the

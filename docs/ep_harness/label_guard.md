@@ -30,9 +30,12 @@ merely copied such a path would be credited with the technique.
 3. The pseudonym → label mapping stays in the runtime bundle and is written to `runs/<id>/label_mask.json`
    only by the post-seal evaluation.
 
-`MASK_SIMULATION_MARKERS=1` also masks simulation-framework markers (`atomic-red-team`, `atomics`,
-`PathToAtomicsFolder`, `redcanary`, `Invoke-AtomicTest`) as `XSIMnn`. Off by default: they are not labels,
-but they do reveal that the telemetry is an emulation. Whether to mask them is an open decision.
+Simulation-framework markers (`atomic-red-team`, `atomics`, `PathToAtomicsFolder`, `redcanary`,
+`Invoke-AtomicTest`) are masked too, as `XSIMnn` (on by default; `MASK_SIMULATION_MARKERS=0` keeps them). They are
+not labels, but they tell a model that the telemetry is an Atomic Red Team emulation, and a model that knows the
+Atomic Red Team test catalogue could then name a technique from memory instead of from the behaviour. Real
+attackers do not leave these strings. Keeping them (`=0`) is the ablation that measures this shortcut. File names
+of the test payloads (`SharpShares.exe`, `PhishingAttachment.xlsm`) are real IOCs and stay unmasked.
 
 ## What evaluation does
 
@@ -52,9 +55,14 @@ A report therefore scores a technique only if it names the technique itself.
 python -m ep_harness.cli preflight --scenario S23 --masoc-repo .
 ```
 
-Prints events, technique IDs before masking, how many were masked, simulation markers left, and the leak check;
-exit code 1 on a leak. Result on 2026-11-10: S07, S16 and S23 all `ok`, no label left in the sanitized telemetry
-or the evidence store.
+Prints events, technique IDs before masking, how many IDs and markers were masked, markers left, and the leak
+check; exit code 1 on a leak; `--keep-markers` mirrors `MASK_SIMULATION_MARKERS=0`. Result on 2026-11-10:
+
+| Scenario | Technique IDs masked | Marker forms masked | Markers left | Leak check |
+|---|---|---|---|---|
+| S07 | 12 | 5 | 0 | ok |
+| S16 | 7 | 6 | 0 | ok |
+| S23 | 5 | 4 | 0 | ok |
 
 ## Known limits
 
