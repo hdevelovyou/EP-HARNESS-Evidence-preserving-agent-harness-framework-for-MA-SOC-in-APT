@@ -19,6 +19,8 @@ ep_harness/
   inline.py          Inline gate between agents in main.py (ENABLE_CONTRACT_GATE=1)
   claim_parser.py    Reads (and repairs) the ```evidence_claims block agents append (ENABLE_CITED_CLAIMS=1)
   evidence_cards.py  ID-first index of a task's events that the Hunter picks evidence from
+  policy.py          Adaptive Evidence-Triggered Policy: signals + budget -> action (POLICY_MODE=adaptive)
+  policy_runner.py   Runs one task under the policy (filter, revise, rerun, review, stop)
   semantic.py        Semantic evidence verification per claim: rules + one judge call (ENABLE_SEMANTIC_VERIFIER=1)
   semantic_bench.py  Synthetic perturbation benchmark for the semantic rules
   cli.py             `audit` command
@@ -36,6 +38,7 @@ Tests (no pytest needed): `python tests/run_tests.py`
 Inline mode: `ENABLE_CONTRACT_GATE=1 python main.py ...`; see `docs/ep_harness/inline_contract_gate.md`.
 Agent-cited claims: add `ENABLE_CITED_CLAIMS=1`; see `docs/ep_harness/cited_evidence_claims.md`.
 Semantic evidence verification: add `ENABLE_SEMANTIC_VERIFIER=1`; see `docs/ep_harness/semantic_evidence_verification.md`.
+Adaptive policy: add `POLICY_MODE=adaptive`; see `docs/ep_harness/adaptive_policy.md`.
 
 ## Gate decisions
 

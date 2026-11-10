@@ -43,7 +43,7 @@ from .adapters.masoc import (
     task_contracts_from_catalog,
 )
 from .capsule import Capsule, Claim, ClaimDrop, claim_ref
-from .evidence_cards import cards_for_task_view
+from .evidence_cards import card, card_line, cards_for_task_view
 from .claim_parser import (
     auto_tag_lines,
     FENCE,
@@ -136,6 +136,9 @@ class InlineECH:
         self._line_index: dict[str, list[int]] = {}
         self.semantic = SemanticVerifier(self.ledger)
         self._semantic_reports: dict[str, SemanticReport] = {}
+        self._policy_decisions: dict = {}
+        self.review_queue: list[dict] = []
+        self.policy = None
 
     @property
     def cited(self) -> bool:
@@ -281,36 +284,162 @@ class InlineECH:
         verdicts as feedback.
         """
         finding = self._latest[(task_id, "FINDING")]
-        for verdict in report.verdicts:
-            self.ledger.record_claim_verdict(verdict.ref, verdict.verdict, "verifier", verdict.to_dict())
+        self.record_semantic_verdicts(task_id, report)
         self.ledger.record_decision(
             finding.capsule_id,
             "ACCEPTED" if report.accepted else "REJECTED",
             "verifier",
             detail={"semantic": report.counts()},
         )
+        return report
+
+    def record_semantic_verdicts(self, task_id: str, report: SemanticReport) -> None:
+        """Append the claim verdicts of the latest FINDING to the ledger (once per FINDING)."""
+        finding = self._latest[(task_id, "FINDING")]
+        if finding.capsule_id in self._semantic_reports:
+            return
+        for verdict in report.verdicts:
+            self.ledger.record_claim_verdict(verdict.ref, verdict.verdict, "verifier", verdict.to_dict())
         self._semantic_reports[finding.capsule_id] = report
         self.handoffs.append({"edge": "hunter->verifier", "capsule_id": finding.capsule_id,
                               "action": "semantic_review", "counts": report.counts()})
-        return report
 
     def _verified_claims(self, finding: Capsule) -> tuple[tuple[Claim, ...], tuple[ClaimDrop, ...]]:
-        """Carry SUPPORTED claims, carry INSUFFICIENT ones as HYPOTHESIS, drop UNRELATED and CONTRADICTED."""
+        """Carry SUPPORTED claims, carry INSUFFICIENT ones as HYPOTHESIS, drop UNRELATED and CONTRADICTED.
+
+        A policy decision on the FINDING overrides the default: held and
+        review claims travel as HYPOTHESIS, rejected ones are declared drops.
+        """
         report = self._semantic_reports.get(finding.capsule_id)
+        decision = self._policy_decisions.get(finding.capsule_id)
         claims, drops = [], []
         for c in finding.claims:
             ref = claim_ref(finding.capsule_id, c.claim_id)
             verdict = report.verdict(c.claim_id) if report else None
             carried = replace(c, parent_claims=(ref,), derivation="CARRIED")
-            if verdict is None or verdict.verdict in ("SUPPORTED", "NOT_APPLICABLE"):
+            label = verdict.verdict if verdict else None
+            if decision is not None:
+                if c.claim_id in decision.hold or c.claim_id in decision.review:
+                    label = "INSUFFICIENT"
+                elif c.claim_id in decision.reject and label in (None, "SUPPORTED", "NOT_APPLICABLE", "INSUFFICIENT"):
+                    label = "UNRELATED"
+            if label is None or label in ("SUPPORTED", "NOT_APPLICABLE"):
                 claims.append(carried)
-            elif verdict.verdict == "INSUFFICIENT":
+            elif label == "INSUFFICIENT":
                 claims.append(replace(carried, level="HYPOTHESIS"))
-            elif verdict.verdict == "UNRELATED":
-                drops.append(ClaimDrop(ref, "INSUFFICIENT_EVIDENCE", "cited evidence is unrelated to the claim"))
+            elif label == "UNRELATED":
+                drops.append(ClaimDrop(ref, "INSUFFICIENT_EVIDENCE", "cited evidence is unrelated to the claim"
+                                       if verdict and verdict.verdict == "UNRELATED" else "removed by the policy"))
             else:
-                drops.append(ClaimDrop(ref, "REFUTED", "; ".join(verdict.reasons)[:300]))
+                drops.append(ClaimDrop(ref, "REFUTED", "; ".join(verdict.reasons)[:300] if verdict else "refuted"))
         return tuple(claims), tuple(drops)
+
+    # ---------------------------------------------------------------- adaptive policy support
+    def latest_finding(self, task_id: str) -> Capsule | None:
+        return self._latest.get((task_id, "FINDING"))
+
+    def task_tool_artifacts(self, task_id: str) -> dict[str, str]:
+        """Tool name -> artifact of its latest successful run in this task."""
+        return {a["tool"]: a["artifact_id"] for a in self.ledger.artifacts_for_task(task_id) if a["status"] == "ok"}
+
+    def filter_finding(self, task_id: str, drop_ids, reason: str) -> HandoffOutcome:
+        """Remove claims with fabricated references by code and gate the rest again (no LLM call).
+
+        The new attempt keeps the Hunter as author: its content is the
+        Hunter's, minus the removed claims, as metadata states.
+        """
+        previous = self._latest[(task_id, "FINDING")]
+        capsule_id, attempt, supersedes = self._next_identity(task_id, "FINDING")
+        capsule = replace(
+            previous, capsule_id=capsule_id, attempt=attempt, supersedes=supersedes, status="PROPOSED",
+            claims=tuple(c for c in previous.claims if c.claim_id not in set(drop_ids)),
+            metadata=dict(previous.metadata, derived_by="policy_orchestrator", filtered_from=previous.capsule_id,
+                          removed_claims=sorted(drop_ids), reason=reason, format_repairs=[]),
+        )
+        return self._check(capsule, "hunter->verifier", "return_to_hunter")
+
+    def revision_handoff(self, task_id: str, revision_text: str, revise_ids, drop_ids=()) -> HandoffOutcome:
+        """Merge a targeted revision into the finding: claims that held are kept, only revise_ids are replaced.
+
+        With no revise_ids the revision replaces every claim (the agent re-emits its claims block).
+        """
+        previous = self._latest[(task_id, "FINDING")]
+        parsed = extract_claims_block(revision_text)
+        targets = list(revise_ids)
+        records = parsed.records
+        if targets:
+            chosen = [r for r in records if r.get("id") in targets]
+            if not chosen and len(records) == len(targets):
+                chosen = [dict(r, id=claim_id) for r, claim_id in zip(records, targets)]
+            records = chosen
+        kept = [c for c in previous.claims if targets and c.claim_id not in targets and c.claim_id not in drop_ids]
+        revised = claims_from_records(records, self.task_tool_artifacts(task_id))
+        notes = [parsed.error] if parsed.error else []
+        if targets and not revised and not notes:
+            notes = [f"the revision contains none of the requested claims {targets}"]
+        capsule_id, attempt, supersedes = self._next_identity(task_id, "FINDING")
+        capsule = replace(
+            previous, capsule_id=capsule_id, attempt=attempt, supersedes=supersedes, status="PROPOSED",
+            claims=tuple(kept + revised),
+            metadata=dict(previous.metadata, revision_of=previous.capsule_id, kept=[c.claim_id for c in kept],
+                          revised=[c.claim_id for c in revised], format_repairs=parsed.repairs),
+        )
+        return self._check(capsule, "hunter->verifier", "return_to_hunter", notes, parsed.repairs)
+
+    def evidence_hints(self, claim: Claim, missing=(), limit: int = 3) -> list[str]:
+        """Card lines of ledger events that mention the claim's entities (or the missing ones first)."""
+        wanted = [m for m in missing if m] or sorted(self.semantic.claim_entities(claim), key=len, reverse=True)
+        wanted = [w for w in wanted if not self.semantic.is_trivial(w)]
+        lines = []
+        for event_id in self.ledger.event_ids():
+            if any(w in self.ledger.event_text(event_id) for w in wanted):
+                lines.append(card_line(card(self.ledger.event(event_id)["payload"])))
+            if len(lines) >= limit:
+                break
+        return lines
+
+    def revision_request(self, task_id: str, decision, report: SemanticReport | None = None,
+                         signals=()) -> str:
+        """The targeted retry message: per failing claim, its text, what is wrong, and candidate cards."""
+        finding = self._latest[(task_id, "FINDING")]
+        reasons = {s.claim_id: f"{s.signal}: {s.reason}" for s in signals}
+        lines = ["Revise ONLY the claims below; keep their ids. Every other claim is already accepted and kept."]
+        for claim_id in decision.revise:
+            claim = finding.claim(claim_id)
+            if claim is None:
+                continue
+            verdict = report.verdict(claim_id) if report else None
+            problem = reasons.get(claim_id) or (f"{verdict.verdict}: {'; '.join(verdict.reasons)}" if verdict else "")
+            lines.append(f"- {claim_id}: \"{claim.text}\" cites {list(claim.event_ids) or 'no event'} -> {problem}")
+            hints = self.evidence_hints(claim, verdict.missing if verdict else ())
+            lines += [f"    candidate card: {h}" for h in hints] or ["    no card mentions these entities: "
+                                                                      "lower the claim to HYPOTHESIS or drop it"]
+        if not decision.revise:
+            lines = ["Re-emit the claims of your finding as one evidence_claims block, evidence first."]
+        return "\n".join(lines)
+
+    def record_policy_outcome(self, task_id: str, decision) -> None:
+        """Record the finding-level outcome of a policy decision and queue review claims."""
+        finding = self._latest[(task_id, "FINDING")]
+        status = self.ledger.capsule_status(finding.capsule_id)
+        detail = {"policy": decision.to_dict()}
+        target = {"ACCEPT": ("ACCEPTED", "verifier"), "REJECT": ("REJECTED", "verifier"),
+                  "TARGETED_REVIEW": ("REVIEW_REQUIRED", "policy_orchestrator"),
+                  "UNRESOLVED": ("UNRESOLVED", "policy_orchestrator")}[decision.action]
+        if status in ("ACCEPTED", "REVIEW_REQUIRED"):
+            self.ledger.record_decision(finding.capsule_id, target[0], target[1], detail=detail)
+        self._policy_decisions[finding.capsule_id] = decision
+        report = self._semantic_reports.get(finding.capsule_id)
+        for claim_id in decision.review:
+            verdict = report.verdict(claim_id) if report else None
+            self.review_queue.append({
+                "ref": claim_ref(finding.capsule_id, claim_id), "task_id": task_id,
+                "text": finding.claim(claim_id).text if finding.claim(claim_id) else "",
+                "verdict": verdict.verdict if verdict else None,
+                "reasons": verdict.reasons if verdict else [], "decided_by": verdict.decided_by if verdict else None,
+            })
+        self.handoffs.append({"edge": "hunter->verifier", "capsule_id": finding.capsule_id,
+                              "action": f"policy:{decision.action}", "policy": decision.to_dict()})
 
     # ---------------------------------------------------------------- Verifier -> Analyst
     def verifier_handoff(self, task_id: str) -> HandoffOutcome:
@@ -467,6 +596,8 @@ class InlineECH:
             "summary": summarize(self.capsules, self.results),
             "semantic": semantic_summary(self.ledger),
             "harness_assist": self._assist_summary(),
+            "policy": self.policy.summary() if self.policy is not None else None,
+            "review_queue": self.review_queue,
             "handoffs": self.handoffs,
             "ledger_counts": self.ledger.counts(),
         }
@@ -478,4 +609,9 @@ class InlineECH:
         audit_path = run_dir / "ech_inline_audit.json"
         self.ledger.save(ledger_path)
         audit_path.write_text(json.dumps(self.summary(), ensure_ascii=False, indent=2), encoding="utf-8")
-        return {"ledger": str(ledger_path), "audit": str(audit_path)}
+        paths = {"ledger": str(ledger_path), "audit": str(audit_path)}
+        if self.review_queue:
+            queue_path = run_dir / "ech_review_queue.json"
+            queue_path.write_text(json.dumps(self.review_queue, ensure_ascii=False, indent=2), encoding="utf-8")
+            paths["review_queue"] = str(queue_path)
+        return paths

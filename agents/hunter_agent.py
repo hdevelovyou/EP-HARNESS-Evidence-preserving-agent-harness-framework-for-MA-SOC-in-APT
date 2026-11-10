@@ -9,6 +9,7 @@ from prompts import (
     build_hunter_final_instruction,
     build_hunter_initial_messages,
     build_hunter_retry_instruction,
+    build_hunter_revision_messages,
     build_hunter_tool_instruction,
 )
 from agents.task_catalog import TASK_INVENTORY, clone_task
@@ -233,6 +234,15 @@ class HunterAgent:
             print(f"    [V] Task {task['id']} completed.")
 
         return run_history
+
+    def revise_claims(self, task, request, claims_json, evidence_cards=""):
+        """Targeted retry: one LLM call that rewrites only the claims the evidence check flagged (no tools)."""
+        task_desc = f"{task['id']}: {task['name']} (Target: {task.get('target', '')})"
+        messages = build_hunter_revision_messages(task_desc, evidence_cards, request, claims_json)
+        content = self.base_llm.invoke(messages).content
+        if isinstance(content, list):
+            content = " ".join(str(part.get("text", "")) if isinstance(part, dict) else str(part) for part in content)
+        return str(content)
 
     def _build_effective_tool_args(self, tool_name, tool_args, raw_log):
         text_value = (tool_args or {}).get("text") if isinstance(tool_args, dict) else None

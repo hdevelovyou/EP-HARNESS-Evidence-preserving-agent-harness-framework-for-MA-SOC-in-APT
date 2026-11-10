@@ -19,6 +19,8 @@ from agents.task_catalog import TASK_BY_ID, TASK_INVENTORY, clone_task
 from agents.verifier_agent import VerifierAgent
 from ep_harness.claim_parser import remove_claims_block
 from ep_harness.inline import InlineECH
+from ep_harness.policy import AdaptivePolicy
+from ep_harness.policy_runner import run_task
 from prompts import build_analyst_claims_contract
 from evaluation.evaluator import SOCEvaluator
 from evaluation.reasoning_evaluator import ReasoningEvaluator
@@ -222,6 +224,77 @@ def _compose_scoring_entities(report_entities, ioc_entities):
         "hashes": ioc_entities.get("hashes", []),
         "techniques": report_entities.get("techniques", []),
     }
+
+
+def _run_task_with_policy(
+    task,
+    *,
+    ech,
+    policy,
+    hunter,
+    verifier,
+    summarizer,
+    extractor,
+    evidence_store,
+    dag_state,
+    upstream_context,
+    final_results,
+    semantic,
+):
+    """One task under the Adaptive Evidence-Triggered Policy (POLICY_MODE=adaptive / always_review)."""
+    task_log = extractor.build_task_view(task, evidence_store)
+    evidence_cards = ech.evidence_cards(task_log) if ech.cited else ""
+    hunter_log = f"{evidence_cards}\n\n{task_log}" if evidence_cards else task_log
+    last = {"output": ""}
+
+    def hunter_run(feedback):
+        history = hunter.run(
+            hunter_log,
+            assigned_tasks=[task],
+            upstream_context=upstream_context,
+            verifier_feedback=feedback,
+            previous_hunter_output=last["output"] or None,
+        )
+        last["output"] = history[-1].content if history else ""
+        return last["output"]
+
+    print(f"\n[+] Policy ({policy.mode}): {task['id']} - {task['name']}")
+    decisions = []
+    try:
+        result = run_task(
+            task,
+            ech,
+            policy,
+            hunter_run=hunter_run,
+            hunter_revise=lambda request, claims: hunter.revise_claims(task, request, claims, evidence_cards),
+            judge=verifier.judge_claims,
+            verify=lambda output: verifier.verify(task["name"], output, task_log),
+            semantic=semantic,
+        )
+        status, output, reason, decisions = result.status, result.hunter_output, result.reason, result.decisions
+    except Exception as error:  # a model or tool failure must not stop the whole run
+        status, output, reason = "Error", last["output"], str(error)
+    print(f"    [POLICY] {task['id']}: {status} ({reason})")
+
+    extra = {} if status == "Verified" else {"status": status, "reason": reason}
+    artifact = summarizer.summarize(task, remove_claims_block(output), evidence_store=evidence_store, **extra)
+    entry = {
+        "task_id": task["id"],
+        "task_name": task["name"],
+        "status": status,
+        "depends_on": task.get("depends_on", []),
+        "selected_by_coordinator": task.get("selected_by_coordinator", False),
+        "result": output,
+        "artifact": artifact,
+        "policy_decisions": decisions,
+    }
+    if status != "Verified":
+        entry["reason"] = reason
+    final_results.append(entry)
+    if status == "Verified":
+        record_task_success(dag_state, task, output, artifact=artifact)
+    else:
+        record_task_failure(dag_state, task, output, reason, artifact=artifact)
 
 
 def _is_verifier_ok(check_result):
@@ -486,6 +559,14 @@ def _execute_agent_runtime(
             )
             if ech is not None:
                 print("[ECH] Contract Gate enabled inline at Hunter->Verifier, Verifier->Analyst, Analyst->Reporter.")
+            policy = (
+                AdaptivePolicy(mode=orchestration_toggles.policy_mode)
+                if ech is not None and orchestration_toggles.policy_mode in ("adaptive", "always_review")
+                else None
+            )
+            if policy is not None:
+                ech.policy = policy
+                print(f"[POLICY] {policy.mode}: budget {policy.budget.to_dict()['limits']}")
 
             coordinator_plan = coordinator.plan(sanitized_log)
             if is_debate:
@@ -567,6 +648,26 @@ def _execute_agent_runtime(
             print(f"[{log_tag}] CyberTeam DAG saved to: {os.path.abspath(dag_path)}")
 
             for task in cyber_plan:
+                if policy is not None:
+                    _run_task_with_policy(
+                        task,
+                        ech=ech,
+                        policy=policy,
+                        hunter=hunter,
+                        verifier=verifier,
+                        summarizer=summarizer,
+                        extractor=extractor,
+                        evidence_store=evidence_store,
+                        dag_state=dag_state,
+                        upstream_context=(
+                            build_upstream_context(task, dag_state)
+                            if orchestration_toggles.dag_orchestrator
+                            else ""
+                        ),
+                        final_results=final_results,
+                        semantic=orchestration_toggles.enable_semantic_verifier,
+                    )
+                    continue
                 success = False
                 retries = 0
                 max_retries = 2
@@ -938,8 +1039,11 @@ def _execute_agent_runtime(
                     not analysis_outcome.accepted
                     and analysis_outcome.retryable
                     and analyst_gate_retries > 0
+                    and (policy is None or policy.budget.can_call())
                 ):
                     analyst_gate_retries -= 1
+                    if policy is not None:
+                        policy.budget.spend_call("analyst")
                     print(f"[GATE] Analysis {analysis_outcome.capsule_id} is {analysis_outcome.status}; retrying Analyst.")
                     deep_analysis = analyst.analyze_incident(
                         results_str,

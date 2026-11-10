@@ -5,6 +5,7 @@ extractor, summarizer, IOC curator and DAG code are the real ones.
 """
 
 import contextlib
+import hashlib
 import json
 import os
 import sys
@@ -22,7 +23,8 @@ ANALYSIS_FAKE = "Lateral movement to the domain controller is recorded in event-
 
 
 def hunter_output(body, tools):
-    audit = [{"tool": t, "status": "ok", "output_sha256": f"{i:064x}"} for i, t in enumerate(tools, 1)]
+    # One digest per tool name, as a real tool run with the same output would give.
+    audit = [{"tool": t, "status": "ok", "output_sha256": hashlib.sha256(t.encode()).hexdigest()} for t in tools]
     return f"{body}\n\nTool Execution Audit:\n{json.dumps(audit)}"
 
 

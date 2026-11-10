@@ -126,6 +126,31 @@
         "agent": "hunter",
         "placement": "before_task_view"
       }
+    },
+    {
+      "name": "adaptive_policy",
+      "category": "orchestration",
+      "version": "adaptive-1",
+      "enabled": true,
+      "config": {
+        "toggle": "POLICY_MODE",
+        "modes": [
+          "fixed",
+          "adaptive",
+          "always_review"
+        ],
+        "requires": "ENABLE_CONTRACT_GATE",
+        "budget_env": [
+          "POLICY_TASK_RETRIES",
+          "POLICY_REVIEW_BUDGET",
+          "POLICY_LLM_CALL_BUDGET"
+        ],
+        "defaults": {
+          "task_retries": 1,
+          "reviews": 5,
+          "llm_calls": 0
+        }
+      }
     }
   ]
 }

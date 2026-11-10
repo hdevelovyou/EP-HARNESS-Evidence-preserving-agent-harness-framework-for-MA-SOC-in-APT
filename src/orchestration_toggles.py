@@ -74,6 +74,9 @@ def load_orchestration_toggles():
     if toggles.enable_semantic_verifier and not toggles.enable_contract_gate:
         # Semantic review runs on capsules the inline gate has already accepted.
         raise ValueError("ENABLE_SEMANTIC_VERIFIER=1 requires ENABLE_CONTRACT_GATE=1.")
+    if toggles.policy_mode != "fixed" and not toggles.enable_contract_gate:
+        # The policy decides from gate violations and semantic verdicts.
+        raise ValueError(f"POLICY_MODE={toggles.policy_mode} requires ENABLE_CONTRACT_GATE=1.")
     return toggles
 
 

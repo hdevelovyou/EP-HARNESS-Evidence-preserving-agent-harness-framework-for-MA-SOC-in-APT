@@ -76,17 +76,18 @@ def card(payload: dict) -> dict:
     }
 
 
+def card_line(c: dict) -> str:
+    activity = f"{c['activity']} ({c['code']})" if c["code"] else c["activity"]
+    link = " -> ".join(part for part in (c["actor"], c["object"]) if part) or "-"
+    line = f"{c['event_id']} | {c['time'] or '-'} | {activity} | {link}"
+    return f"{line} | {c['command']}" if c["command"] else line
+
+
 def render(cards: list[dict]) -> str:
     lines = [
         "Evidence cards (one per event you may cite: ID | time | activity (event code) | actor -> object | command):",
     ]
-    for c in cards:
-        activity = f"{c['activity']} ({c['code']})" if c["code"] else c["activity"]
-        link = " -> ".join(part for part in (c["actor"], c["object"]) if part) or "-"
-        line = f"{c['event_id']} | {c['time'] or '-'} | {activity} | {link}"
-        if c["command"]:
-            line += f" | {c['command']}"
-        lines.append(line)
+    lines += [card_line(c) for c in cards]
     return "\n".join(lines)
 
 
