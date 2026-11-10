@@ -546,6 +546,13 @@ class InlineECH:
         })
         return text
 
+    def forward_unchecked(self, analysis_text: str) -> str:
+        """Shadow mode: what the Reporter gets without enforcement (claims block and tags removed, nothing withheld)."""
+        text = strip_claim_tags(remove_claims_block(analysis_text)) if self.cited else str(analysis_text or "")
+        self.handoffs.append({"edge": "analyst->reporter", "action": "shadow_forward",
+                              "capsule_id": self.latest_analysis().capsule_id if self.latest_analysis() else None})
+        return text
+
     # ---------------------------------------------------------------- Analyst edge under the policy
     def latest_analysis(self) -> Capsule | None:
         return self._latest.get((ANALYSIS_TASK, "ANALYSIS"))

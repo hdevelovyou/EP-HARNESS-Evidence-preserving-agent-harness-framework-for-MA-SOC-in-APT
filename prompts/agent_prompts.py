@@ -197,10 +197,16 @@ def _cited_claims_enabled():
     return load_orchestration_toggles().enable_cited_claims
 
 
-def build_hunter_claims_contract():
+def build_hunter_claims_contract(cards=None):
+    """cards=None reads ENABLE_EVIDENCE_CARDS: the contract points at the cards only when they are given."""
+    if cards is None:
+        from src.orchestration_toggles import load_orchestration_toggles
+
+        cards = load_orchestration_toggles().enable_evidence_cards
+    source = "the Evidence cards at the top of the log" if cards else "the event_id fields of the events in the log"
     return (
         "Evidence claims (required). Work evidence first, for each claim in this order:\n"
-        "1. evidence: pick the event IDs from the Evidence cards at the top of the log that show it;\n"
+        f"1. evidence: pick the event IDs from {source} that show it;\n"
         "2. observables: copy the exact values from those cards;\n"
         "3. tools: name the tools from the Tool Execution Audit whose output supports it;\n"
         "4. level, then text: write the statement last, saying no more than the picked cards show.\n"

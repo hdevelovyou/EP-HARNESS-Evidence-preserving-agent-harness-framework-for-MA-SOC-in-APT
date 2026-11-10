@@ -20,6 +20,7 @@ from agents.verifier_agent import VerifierAgent
 from ep_harness.claim_parser import remove_claims_block
 from ep_harness.inline import InlineECH
 from ep_harness.label_guard import assert_no_labels, mask_labels, unmask_artifacts
+from ep_harness.measurement import measure_run
 from ep_harness.policy import AdaptivePolicy
 from ep_harness.policy_runner import run_analysis, run_task
 from prompts import build_analyst_claims_contract
@@ -241,10 +242,11 @@ def _run_task_with_policy(
     upstream_context,
     final_results,
     semantic,
+    evidence_cards_enabled=True,
 ):
     """One task under the Adaptive Evidence-Triggered Policy (POLICY_MODE=adaptive / always_review)."""
     task_log = extractor.build_task_view(task, evidence_store)
-    evidence_cards = ech.evidence_cards(task_log) if ech.cited else ""
+    evidence_cards = ech.evidence_cards(task_log) if ech.cited and evidence_cards_enabled else ""
     hunter_log = f"{evidence_cards}\n\n{task_log}" if evidence_cards else task_log
     last = {"output": ""}
 
@@ -583,8 +585,13 @@ def _execute_agent_runtime(
                 if orchestration_toggles.enable_contract_gate
                 else None
             )
+            # shadow: capsules are built and recorded, nothing is blocked (the Structured Capsule baseline)
+            gate_enforced = ech is not None and orchestration_toggles.contract_gate_mode == "inline"
             if ech is not None:
-                print("[ECH] Contract Gate enabled inline at Hunter->Verifier, Verifier->Analyst, Analyst->Reporter.")
+                print(
+                    f"[ECH] Contract Gate ({orchestration_toggles.contract_gate_mode}) at Hunter->Verifier, "
+                    "Verifier->Analyst, Analyst->Reporter."
+                )
             policy = (
                 AdaptivePolicy(mode=orchestration_toggles.policy_mode)
                 if ech is not None and orchestration_toggles.policy_mode in ("adaptive", "always_review")
@@ -692,17 +699,23 @@ def _execute_agent_runtime(
                         ),
                         final_results=final_results,
                         semantic=orchestration_toggles.enable_semantic_verifier,
+                        evidence_cards_enabled=orchestration_toggles.enable_evidence_cards,
                     )
                     continue
                 success = False
                 retries = 0
-                max_retries = 2
+                # MA-SOC's paper allows one re-call; the original code had 2 (3 attempts).
+                max_retries = int(os.getenv("MASOC_MAX_RETRIES", "1"))
                 last_feedback = None
                 last_hunter_output = None
                 last_artifact = None
                 task_log = extractor.build_task_view(task, evidence_store)
                 # Cited mode: the harness indexes the evidence so the Hunter picks IDs instead of searching for them.
-                evidence_cards = ech.evidence_cards(task_log) if ech is not None and ech.cited else ""
+                evidence_cards = (
+                    ech.evidence_cards(task_log)
+                    if ech is not None and ech.cited and orchestration_toggles.enable_evidence_cards
+                    else ""
+                )
                 hunter_log = f"{evidence_cards}\n\n{task_log}" if evidence_cards else task_log
 
                 while not success and retries <= max_retries:
@@ -792,7 +805,7 @@ def _execute_agent_runtime(
                         last_hunter_output = summarizer.compact_for_retry(last_artifact)
 
                         gate_outcome = ech.hunter_handoff(task["id"], hunter_output) if ech else None
-                        gate_blocked = gate_outcome is not None and not gate_outcome.accepted
+                        gate_blocked = gate_enforced and gate_outcome is not None and not gate_outcome.accepted
                         if gate_blocked:
                             print(
                                 f"    [GATE] Finding {gate_outcome.capsule_id} is {gate_outcome.status}; "
@@ -822,7 +835,7 @@ def _execute_agent_runtime(
                             if _is_verifier_ok(check_str):
                                 verifier_handoff = ech.verifier_handoff(task["id"])
 
-                        if verifier_handoff is not None and not verifier_handoff.accepted:
+                        if gate_enforced and verifier_handoff is not None and not verifier_handoff.accepted:
                             # Blocked at Verifier->Analyst: a Hunter retry cannot fix this edge.
                             print(
                                 f"    [GATE] {verifier_handoff.capsule_id} is {verifier_handoff.status}; "
@@ -1077,6 +1090,10 @@ def _execute_agent_runtime(
                     f"[POLICY] Analysis {'accepted' if analysis_result.accepted else 'not accepted'}: "
                     f"{[d['action'] for d in analysis_result.decisions]}"
                 )
+            elif ech is not None and not gate_enforced:
+                ech.analyst_handoff(deep_analysis)  # recorded only
+                ungated_analysis = deep_analysis
+                deep_analysis = ech.forward_unchecked(deep_analysis)
             elif ech is not None:
                 analysis_outcome = ech.analyst_handoff(deep_analysis)
                 analyst_gate_retries = int(os.getenv("CONTRACT_GATE_ANALYST_RETRIES", "1"))
@@ -1261,6 +1278,11 @@ def _execute_agent_runtime(
                 f.write(report_str)
             print(f"[Reporter] Final report sealed at: {os.path.abspath(report_path)}")
 
+            # Same deterministic instrument for every configuration (no model), after the report is sealed.
+            measurement = measure_run(evidence_store, final_results, ungated_analysis, report_str)
+            with open(os.path.join(run_dir, "ech_measurement.json"), "w", encoding="utf-8") as f:
+                json.dump(measurement, f, ensure_ascii=False, indent=2)
+
         latency = time.time() - start_time
         total_input = cb.prompt_tokens
         total_output = cb.completion_tokens
@@ -1301,6 +1323,7 @@ def _execute_agent_runtime(
             "debate_records": debate_records,
             "debate_path": debate_path,
             "ech_audit": ech_audit,
+            "measurement": measurement,
             "debate_timeout": debate_timeout,
         }
 

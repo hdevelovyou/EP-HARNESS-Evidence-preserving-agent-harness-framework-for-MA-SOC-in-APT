@@ -215,7 +215,7 @@ def test_main_runs_gate_inline_at_three_handoffs(tmp_path):
     # Hunter->Verifier: blocked findings never reach the Verifier.
     assert calls["verifier"] == ["Infrastructure Extraction"]
     assert calls["hunter"][1] == ("T7", "CONTRACT GATE")
-    assert len([c for c in calls["hunter"] if c[0] == "T3"]) == 3
+    assert len([c for c in calls["hunter"] if c[0] == "T3"]) == 2   # one re-call, as in MA-SOC's paper
 
     # Analyst->Reporter: one retry with gate feedback, then the bad claim is withheld.
     assert calls["analyst"] == [False, True]

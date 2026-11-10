@@ -74,7 +74,8 @@
           "reporter->output"
         ],
         "analyst_retries_env": "CONTRACT_GATE_ANALYST_RETRIES",
-        "claim_source_env": "ENABLE_CITED_CLAIMS"
+        "claim_source_env": "ENABLE_CITED_CLAIMS",
+        "mode_env": "CONTRACT_GATE_MODE (inline|shadow)"
       }
     },
     {
@@ -122,7 +123,7 @@
       "version": "0.2.0",
       "enabled": true,
       "config": {
-        "toggle": "ENABLE_CITED_CLAIMS",
+        "toggle": "ENABLE_EVIDENCE_CARDS (with ENABLE_CITED_CLAIMS)",
         "agent": "hunter",
         "placement": "before_task_view"
       }
@@ -180,6 +181,37 @@
         },
         "label_source": "construction",
         "human_check": "annotation sheets + Cohen's kappa"
+      }
+    },
+    {
+      "name": "uniform_measurement",
+      "category": "observability_evaluation",
+      "version": "measure-1",
+      "enabled": true,
+      "config": {
+        "output": "runs/<id>/ech_measurement.json",
+        "instrument": "references, provenance, semantic rules (no judge)"
+      }
+    },
+    {
+      "name": "experiment_matrix",
+      "category": "observability_evaluation",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "configs": [
+          "B0_masoc",
+          "B1_structured_capsule",
+          "B1c_structured_capsule_cards",
+          "L1_gate",
+          "L2_semantic",
+          "Full_ep_harness"
+        ],
+        "baseline": "B1_structured_capsule",
+        "budget": {
+          "MASOC_MAX_RETRIES": 1,
+          "POLICY_TASK_RETRIES": 1
+        }
       }
     }
   ]

@@ -24,6 +24,8 @@ ep_harness/
   label_guard.py     Masks ATT&CK technique IDs before the runtime; restores paths for post-seal IOC scoring
   claim_dataset.py   Labelled claim-evidence set built from masked S07/S16/S23 events
   claim_eval.py      Scores Reference Validity, Provenance, Semantic Support, Unsupported Claim Rate on it
+  measurement.py     Same post-run instrument for every configuration (ech_measurement.json)
+  experiments.py     Configuration ladder (Structured Capsule baseline -> full EP-HARNESS) x scenarios x repeats
   semantic.py        Semantic evidence verification per claim: rules + one judge call (ENABLE_SEMANTIC_VERIFIER=1)
   semantic_bench.py  Synthetic perturbation benchmark for the semantic rules
   cli.py             `audit` command
@@ -45,6 +47,7 @@ Adaptive policy: add `POLICY_MODE=adaptive`; see `docs/ep_harness/adaptive_polic
 Label guard (always on) and model-free preflight: `python -m ep_harness.cli preflight --scenario S23 --masoc-repo .`;
 see `docs/ep_harness/label_guard.md`.
 Metric validity: `python -m ep_harness.claim_eval evaluate --scenario S07`; see `docs/ep_harness/claim_evidence_dataset.md`.
+Experiments: `python -m ep_harness.experiments plan`; see `docs/ep_harness/experiment_design.md`.
 
 ## Gate decisions
 
