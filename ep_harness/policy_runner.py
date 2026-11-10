@@ -119,3 +119,59 @@ def run_task(task: dict, ech, policy: AdaptivePolicy, *, hunter_run, hunter_revi
                           policy.state(task_id).decisions)
 
     return TaskResult("Unresolved", output, "step limit reached", policy.state(task_id).decisions)
+
+
+ANALYSIS_TASK = "ANALYSIS"
+
+
+@dataclass
+class AnalysisResult:
+    analysis: str            # the Analyst's text as finally gated (claims block and tags included)
+    for_reporter: str        # what the Reporter may see
+    accepted: bool
+    decisions: list = field(default_factory=list)
+
+
+def run_analysis(ech, policy: AdaptivePolicy, analysis_text: str, *, analyst_rerun, analyst_revise,
+                 max_steps: int = 6) -> AnalysisResult:
+    """The Analyst -> Reporter handoff under the policy, claim by claim.
+
+      claims citing parent claims that do not exist -> removed by code (no call)
+      fixable claims (R1, R3, R4, ...)               -> revise: one Analyst call
+                                                        rewrites only those claims;
+                                                        their narrative lines are
+                                                        replaced, the rest is kept
+      claims block missing                           -> revise: re-emit the block
+      no claims at all, or no claim-level fix (derived mode) -> rerun the Analyst
+      out of budget, or no progress                  -> failing claims withheld
+
+    analyst_rerun(feedback) -> full analysis text; analyst_revise(request, claims_json) -> evidence_claims block.
+    """
+    budget = policy.budget
+    text = analysis_text
+    outcome = ech.analyst_handoff(text)
+    for _ in range(max_steps):
+        if outcome.accepted:
+            break
+        capsule = ech.latest_analysis()
+        signals, codes, notes = policy.gate_signals(outcome, capsule)
+        decision = policy.decide_gate(ANALYSIS_TASK, signals, codes, notes)
+        if decision.action == "TARGETED_RETRY":
+            budget.spend_retry(ANALYSIS_TASK)
+            if decision.mode == "rerun" or not ech.cited:
+                budget.spend_call("analyst")
+                text = analyst_rerun(outcome.feedback)
+            else:
+                budget.spend_call("analyst_revise")
+                request = ech.analysis_revision_request(decision, signals)
+                revision = analyst_revise(request, ech.analysis_claims_json(decision.revise))
+                text = ech.analysis_revised(text, revision, decision.revise, decision.reject) or text
+            outcome = ech.analyst_handoff(text)
+            continue
+        if decision.action == "REJECT" and ech.cited and 0 < len(decision.reject) < len(capsule.claims):
+            text = ech.analysis_without(text, decision.reject)
+            outcome = ech.analyst_handoff(text)
+            continue
+        break
+    for_reporter = ech.analysis_for_reporter(text, outcome)
+    return AnalysisResult(text, for_reporter, outcome.accepted, policy.state(ANALYSIS_TASK).decisions)

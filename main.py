@@ -21,7 +21,7 @@ from ep_harness.claim_parser import remove_claims_block
 from ep_harness.inline import InlineECH
 from ep_harness.label_guard import assert_no_labels, mask_labels, unmask_artifacts
 from ep_harness.policy import AdaptivePolicy
-from ep_harness.policy_runner import run_task
+from ep_harness.policy_runner import run_analysis, run_task
 from prompts import build_analyst_claims_contract
 from evaluation.evaluator import SOCEvaluator
 from evaluation.reasoning_evaluator import ReasoningEvaluator
@@ -1058,18 +1058,34 @@ def _execute_agent_runtime(
                 debate_records.append(analyst_debate_record)
 
             ungated_analysis = deep_analysis
-            if ech is not None:
+            if ech is not None and policy is not None:
+                # Claim by claim: remove fabricated parents by code, revise only failing claims, withhold the rest.
+                analysis_result = run_analysis(
+                    ech,
+                    policy,
+                    deep_analysis,
+                    analyst_rerun=lambda feedback: analyst.analyze_incident(
+                        results_str,
+                        f"{analysis_context}\n\n{feedback}",
+                        entity_context=entity_context,
+                        ttp_relations_context=ttp_graph_prompt_context,
+                    ),
+                    analyst_revise=lambda request, claims: analyst.revise_claims(request, claims),
+                )
+                ungated_analysis, deep_analysis = analysis_result.analysis, analysis_result.for_reporter
+                print(
+                    f"[POLICY] Analysis {'accepted' if analysis_result.accepted else 'not accepted'}: "
+                    f"{[d['action'] for d in analysis_result.decisions]}"
+                )
+            elif ech is not None:
                 analysis_outcome = ech.analyst_handoff(deep_analysis)
                 analyst_gate_retries = int(os.getenv("CONTRACT_GATE_ANALYST_RETRIES", "1"))
                 while (
                     not analysis_outcome.accepted
                     and analysis_outcome.retryable
                     and analyst_gate_retries > 0
-                    and (policy is None or policy.budget.can_call())
                 ):
                     analyst_gate_retries -= 1
-                    if policy is not None:
-                        policy.budget.spend_call("analyst")
                     print(f"[GATE] Analysis {analysis_outcome.capsule_id} is {analysis_outcome.status}; retrying Analyst.")
                     deep_analysis = analyst.analyze_incident(
                         results_str,

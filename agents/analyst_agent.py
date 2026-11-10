@@ -1,5 +1,5 @@
 from agents.llm_config import create_agent_llm
-from prompts import build_analyst_prompt
+from prompts import build_analyst_prompt, build_analyst_revision_messages
 
 
 class AnalystAgent:
@@ -32,6 +32,10 @@ class AnalystAgent:
             "log": analyst_log,
         }).content
         return self._content_to_text(content)
+
+    def revise_claims(self, request, claims_json):
+        """Targeted retry: one LLM call that rewrites only the analysis claims the gate flagged."""
+        return self._content_to_text(self.llm.invoke(build_analyst_revision_messages(request, claims_json)).content)
 
     def _content_to_text(self, content):
         if isinstance(content, list):

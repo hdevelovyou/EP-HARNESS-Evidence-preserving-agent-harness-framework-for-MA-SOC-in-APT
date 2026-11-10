@@ -1,5 +1,6 @@
 from .agent_prompts import (
     build_analyst_claims_contract,
+    build_analyst_revision_messages,
     build_analyst_prompt,
     build_coordinator_prompt,
     build_hunter_claims_contract,
@@ -18,6 +19,7 @@ from .agent_prompts import (
 
 __all__ = [
     "build_analyst_claims_contract",
+    "build_analyst_revision_messages",
     "build_analyst_prompt",
     "build_coordinator_prompt",
     "build_hunter_claims_contract",

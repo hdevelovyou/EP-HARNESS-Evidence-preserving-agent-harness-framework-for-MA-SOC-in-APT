@@ -182,7 +182,7 @@ def test_layer_disagreement_is_reviewed_not_silently_dropped():
 
 # ------------------------------------------------------------ main.py with POLICY_MODE=adaptive
 def test_main_runs_tasks_under_the_policy(tmp_path):
-    calls = {"verify": 0, "run": 0, "revise": 0}
+    calls = {"verify": 0, "run": 0, "revise": 0, "analyze": 0, "analyst_revise": 0}
 
     class Coordinator:
         def plan(self, log):
@@ -208,7 +208,15 @@ def test_main_runs_tasks_under_the_policy(tmp_path):
 
     class Analyst:
         def analyze_incident(self, *args, **kwargs):
-            return "## Findings\ncsc.exe built two DLLs"
+            calls["analyze"] += 1
+            return "## Findings\ncsc.exe built two DLLs"          # forgot the claims block
+
+        def revise_claims(self, request, claims_json):
+            calls["analyst_revise"] += 1
+            assert request.startswith("Re-emit the claims")
+            return "```evidence_claims\n" + json.dumps([{"id": "c1", "parent_claims": [
+                "CAP-T7-VERIFIED-a1#c1", "CAP-T7-VERIFIED-a1#c2"], "level": "INFERRED",
+                "text": "csc.exe built two DLLs"}]) + "\n```"
 
     class Reporter:
         def generate_final_report(self, analysis_text, **kwargs):
@@ -229,6 +237,80 @@ def test_main_runs_tasks_under_the_policy(tmp_path):
     entry = bundle["final_results"][0]
     assert entry["status"] == "Verified"
     assert [d["action"] for d in entry["policy_decisions"]] == ["REJECT", "TARGETED_RETRY", "ACCEPT"]
-    assert calls == {"verify": 0, "run": 1, "revise": 1}
+    assert calls == {"verify": 0, "run": 1, "revise": 1, "analyze": 1, "analyst_revise": 1}
     policy = bundle["ech_audit"]["policy"]
-    assert policy["mode"] == "adaptive" and policy["actions"]["TARGETED_RETRY:revise"] == 1
+    assert policy["mode"] == "adaptive" and policy["actions"]["TARGETED_RETRY:revise"] == 2   # Hunter + Analyst
+    assert [d["action"] for d in policy["tasks"]["ANALYSIS"]] == ["TARGETED_RETRY"]
+    assert policy["budget"]["used"]["llm_calls"]["analyst_revise"] == 1
+
+
+# ------------------------------------------------------------ Analyst -> Reporter under the policy
+from ep_harness.policy_runner import run_analysis  # noqa: E402
+
+ANALYSIS_CLAIMS = [
+    {"id": "c1", "parent_claims": ["CAP-T7-VERIFIED-a1#c1"], "level": "INFERRED", "text": "csc.exe compiled tmseiddy.dll"},
+    {"id": "c2", "parent_claims": ["CAP-T9-VERIFIED-a1#c1"], "level": "INFERRED",          # parent does not exist
+     "text": "The DLL was loaded on the domain controller"},
+    {"id": "c3", "parent_claims": ["CAP-T7-VERIFIED-a1#c1"], "observables": ["evil.dll"],  # value not in evidence
+     "level": "INFERRED", "text": "csc.exe dropped evil.dll in the temp folder"},
+]
+NARRATIVE = ("## Findings\n- csc.exe compiled tmseiddy.dll [c1]\n- The DLL was loaded on the domain controller [c2]\n"
+             "- csc.exe dropped evil.dll in the temp folder [c3]")
+
+
+def analysis(records):
+    return NARRATIVE + "\n```evidence_claims\n" + json.dumps(records) + "\n```"
+
+
+def verified_ech():
+    harness = ech()
+    assert harness.hunter_handoff("T7", hunter_output(block([GOOD]), TOOLS)).accepted
+    harness.record_verifier("T7", True, "OK")
+    assert harness.verifier_handoff("T7").accepted
+    return harness
+
+
+def analyst_stub(revision):
+    calls = {"rerun": 0, "revise": []}
+
+    def rerun(feedback):
+        calls["rerun"] += 1
+        raise AssertionError("the Analyst should not be rerun")
+
+    def revise(request, claims_json):
+        calls["revise"].append((request, json.loads(claims_json)))
+        return "```evidence_claims\n" + json.dumps(revision) + "\n```"
+
+    return calls, rerun, revise
+
+
+def test_analysis_fabricated_parent_removed_and_one_claim_revised():
+    harness, policy = verified_ech(), AdaptivePolicy(Budget(task_retries=1))
+    fixed = dict(ANALYSIS_CLAIMS[2], observables=["tmseiddy.dll"], text="csc.exe dropped tmseiddy.dll in the temp folder")
+    calls, rerun, revise = analyst_stub([fixed])
+    result = run_analysis(harness, policy, analysis(ANALYSIS_CLAIMS), analyst_rerun=rerun, analyst_revise=revise)
+    assert result.accepted and [d["action"] for d in result.decisions] == ["TARGETED_RETRY"]
+    request, asked = calls["revise"][0]
+    assert [c["id"] for c in asked] == ["c3"] and "CAP-T7-VERIFIED-a1#c1" in request
+    assert result.for_reporter == ("## Findings\n- csc.exe compiled tmseiddy.dll\n"
+                                   "- csc.exe dropped tmseiddy.dll in the temp folder")
+    assert policy.budget.used_calls == {"analyst_revise": 1}
+
+
+def test_analysis_revision_without_fix_removes_only_that_claim():
+    harness, policy = verified_ech(), AdaptivePolicy(Budget(task_retries=1))
+    calls, rerun, revise = analyst_stub([ANALYSIS_CLAIMS[2]])
+    result = run_analysis(harness, policy, analysis(ANALYSIS_CLAIMS), analyst_rerun=rerun, analyst_revise=revise)
+    assert [d["action"] for d in result.decisions] == ["TARGETED_RETRY", "REJECT"]
+    assert result.decisions[-1]["reject"] == ["c3"] and result.accepted
+    assert result.for_reporter == "## Findings\n- csc.exe compiled tmseiddy.dll"
+
+
+def test_analysis_with_only_a_fabricated_parent_costs_no_call():
+    harness, policy = verified_ech(), AdaptivePolicy(Budget(task_retries=1))
+    calls, rerun, revise = analyst_stub([])
+    result = run_analysis(harness, policy, analysis(ANALYSIS_CLAIMS[:2]), analyst_rerun=rerun, analyst_revise=revise)
+    assert result.accepted and [d["action"] for d in result.decisions] == ["REJECT"]
+    assert calls == {"rerun": 0, "revise": []} and policy.budget.used_calls == {}
+    # c2 (fabricated parent) is gone; the c3 line has no claim record here, so it is narrative and passes as is.
+    assert result.for_reporter == "## Findings\n- csc.exe compiled tmseiddy.dll\n- csc.exe dropped evil.dll in the temp folder"

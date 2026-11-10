@@ -29,6 +29,7 @@ Two claim sources:
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -544,6 +545,91 @@ class InlineECH:
             "auto_tagged_lines": auto_tagged,
         })
         return text
+
+    # ---------------------------------------------------------------- Analyst edge under the policy
+    def latest_analysis(self) -> Capsule | None:
+        return self._latest.get((ANALYSIS_TASK, "ANALYSIS"))
+
+    @staticmethod
+    def _render_block(records: list[dict]) -> str:
+        return f"```{FENCE}\n{json.dumps(records, ensure_ascii=False)}\n```"
+
+    def _tagged_narrative(self, analysis_text: str) -> tuple[list[str], list[dict]]:
+        """Narrative lines (untagged ones matched to claims by the harness) and the claim records."""
+        parsed = extract_claims_block(analysis_text)
+        claims = claims_from_records(parsed.records)
+        narrative, _ = auto_tag_lines(remove_claims_block(analysis_text), claims)
+        return narrative.splitlines(), parsed.records
+
+    def analysis_without(self, analysis_text: str, drop_ids) -> str:
+        """The analysis minus the claims in drop_ids: their tagged lines and their records (no LLM call)."""
+        drop = set(drop_ids)
+        lines, records = self._tagged_narrative(analysis_text)
+        kept_lines = drop_tagged_lines("\n".join(lines), drop)
+        kept_records = [r for r in records if str(r.get("id")) not in drop]
+        return f"{kept_lines}\n{self._render_block(kept_records)}"
+
+    def analysis_revised(self, analysis_text: str, revision_text: str, revise_ids, drop_ids=()) -> str | None:
+        """Merge a targeted Analyst revision: replace only the revised claims, in the block and in the narrative.
+
+        Each revised claim's tagged lines are replaced by its new statement at
+        the place of its first line; dropped claims lose their lines; every
+        other line and claim stays as the Analyst wrote it. None if the
+        revision contains none of the requested claims.
+        """
+        targets = [str(t) for t in revise_ids]
+        parsed = extract_claims_block(revision_text)
+        revised = {str(r.get("id")): r for r in parsed.records if str(r.get("id")) in targets}
+        if not revised and targets and len(parsed.records) == len(targets):
+            revised = {claim_id: dict(r, id=claim_id) for r, claim_id in zip(parsed.records, targets)}
+        if not revised and targets:
+            return None
+        lines, records = self._tagged_narrative(analysis_text)
+        drop = set(drop_ids)
+        if not targets:  # the Analyst re-emitted its whole claims block
+            narrative = drop_tagged_lines("\n".join(lines), drop)
+            return f"{narrative}\n{self._render_block([r for r in parsed.records if str(r.get('id')) not in drop])}"
+        out, placed = [], set()
+        for line in lines:
+            tags = set(re.findall(r"\[(c\d+)\]", line))
+            if tags & drop:
+                continue
+            hit = sorted(tags & set(revised))
+            if hit:
+                claim_id = hit[0]
+                if claim_id not in placed:
+                    out.append(f"- {revised[claim_id].get('text', '').strip()} [{claim_id}]")
+                    placed.add(claim_id)
+                continue
+            out.append(line)
+        out += [f"- {revised[c].get('text', '').strip()} [{c}]" for c in revised if c not in placed]
+        merged = [revised.get(str(r.get("id")), r) for r in records if str(r.get("id")) not in drop]
+        return "\n".join(out) + "\n" + self._render_block(merged)
+
+    def analysis_revision_request(self, decision, signals) -> str:
+        """Targeted retry message for the Analyst: each failing claim, its problem, and parent refs it may cite."""
+        capsule = self.latest_analysis()
+        reasons = {s.claim_id: f"{s.signal}: {s.reason}" for s in signals}
+        refs = [(item["ref"], item["text"]) for claims in self.verified_claims().values() for item in claims]
+        lines = ["Revise ONLY the analysis claims below; keep their ids. Every other claim is kept as written."]
+        if not decision.revise:
+            return "Re-emit the claims of your analysis as one evidence_claims block, parent claims first."
+        for claim_id in decision.revise:
+            claim = capsule.claim(claim_id) if capsule else None
+            if claim is None:
+                continue
+            lines.append(f"- {claim_id}: \"{claim.text}\" cites parents {list(claim.parent_claims) or 'none'} "
+                         f"and events {list(claim.event_ids) or 'none'} -> {reasons.get(claim_id, '')}")
+        lines.append("Verified claims you may cite as parent_claims:")
+        lines += [f"    {ref}: {text}" for ref, text in refs[:12]] or ["    none: lower the claim to HYPOTHESIS"]
+        return "\n".join(lines)
+
+    def analysis_claims_json(self, claim_ids) -> str:
+        capsule = self.latest_analysis()
+        chosen = [c for c in (capsule.claims if capsule else ()) if not claim_ids or c.claim_id in claim_ids]
+        return json.dumps([{"id": c.claim_id, "parent_claims": list(c.parent_claims), "evidence": list(c.event_ids),
+                            "observables": list(c.observables), "level": c.level, "text": c.text}
+                           for c in chosen], ensure_ascii=False)
 
     # ---------------------------------------------------------------- Reporter -> output
     def reporter_handoff(self, report_text: str) -> HandoffOutcome:

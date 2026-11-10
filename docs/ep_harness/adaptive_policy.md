@@ -28,6 +28,23 @@ Verifier's OK/FAIL is the only post-gate signal.
 | REJECT | claims with fabricated references (removed by code, no call), or every claim contradicted/unrelated | removed claims stay in the ledger |
 | UNRESOLVED | budget spent, no progress, or a fault the agent cannot fix | the task stops; nothing is forced |
 
+## The Analyst -> Reporter edge
+
+The same signal table drives the ANALYSIS capsule (`policy_runner.run_analysis`), claim by claim, from the gate's
+signals at that edge (semantic review of analysis claims belongs to the Output Evidence Guardrail, not built yet):
+
+| Signal on an analysis claim | Action |
+|---|---|
+| parent claim that does not exist (`unknown_parent_claim`) | removed by code: its record and its narrative lines (no call) |
+| R1 / R3 / R4 / ID problems | revise: **one** Analyst call (`AnalystAgent.revise_claims`) rewrites only those claims; the harness replaces their narrative lines in place and keeps every other line and claim |
+| claims block missing | revise: re-emit the block for the analysis as written |
+| no claims at all, or derived mode (no claim IDs) | rerun the Analyst |
+| out of retries | the failing claims are removed (lines and records); the rest goes to the Reporter |
+| no accepted parent capsule at all (`missing_parents`) | unresolved: nothing to fix; claims with violations are withheld |
+
+The edge has its own retry budget (task id `ANALYSIS`). Without a policy (`POLICY_MODE=fixed`), the Analyst is
+retried as a whole up to `CONTRACT_GATE_ANALYST_RETRIES` as before.
+
 ## Signal table (`SIGNAL_TABLE`, version `adaptive-1`)
 
 | Signal | Reaction | Out of retries |
@@ -74,6 +91,6 @@ review and the policy on one at a time separates their contributions.
 ## Known limits
 
 - Debate mode's Hunter review is not run under the adaptive policy (the policy replaces that loop).
-- The Analyst edge only uses the budget for its retry; it has no claim-level policy yet.
+- At the Analyst edge the policy only has the gate's signals; semantic signals come with the Output Evidence Guardrail.
 - Review is a queue for a human; nothing consumes it automatically.
 - Defaults (1 retry, 5 reviews) follow MA-SOC's one re-call; they are not tuned.
