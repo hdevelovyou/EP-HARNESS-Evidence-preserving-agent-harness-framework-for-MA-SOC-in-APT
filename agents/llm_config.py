@@ -2,7 +2,6 @@ import os
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 
 load_dotenv()
@@ -14,18 +13,23 @@ _DEFAULT_MODELS = {
     "google": "models/gemma-4-26b-a4b-it",
 }
 
-# Main-experiment heterogeneous allocation. Environment variables still take
-# precedence, so AGENT_LLM_PROVIDER/AGENT_MODEL can switch all components back
-# to a homogeneous model for RQ1 without changing source code.
+_MODEL_ALIASES = {
+    "gemma-4-26b-it": "models/gemma-4-26b-a4b-it",
+    "models/gemma-4-26b-it": "models/gemma-4-26b-a4b-it",
+    "gemma-4-26b-a4b-it": "models/gemma-4-26b-a4b-it",
+}
+
+# Homogeneous Gemma-4-26B-IT allocation across all agents. Environment variables
+# still take precedence for per-agent or global overrides.
 _DEFAULT_PROVIDERS = {
     "coordinator": "google",
-    "hunter": "openai",
-    "verifier": "openai",
+    "hunter": "google",
+    "verifier": "google",
     "analyst": "google",
     "reporter": "google",
-    "tools": "openai",
-    "debate_feedback": "openai",
-    "debate_judge": "openai",
+    "tools": "google",
+    "debate_feedback": "google",
+    "debate_judge": "google",
 }
 
 
@@ -39,7 +43,7 @@ class AgentLLMSettings:
 def resolve_agent_llm_settings(agent_name):
     """Resolve global agent defaults with optional per-agent overrides."""
     env_prefix = agent_name.strip().upper().replace("-", "_").replace(" ", "_")
-    default_provider = _DEFAULT_PROVIDERS.get(env_prefix.lower(), "openai")
+    default_provider = _DEFAULT_PROVIDERS.get(env_prefix.lower(), "google")
     provider = (
         os.getenv(f"{env_prefix}_LLM_PROVIDER")
         or os.getenv("AGENT_LLM_PROVIDER")
@@ -53,11 +57,12 @@ def resolve_agent_llm_settings(agent_name):
             f"Supported providers: {supported}."
         )
 
-    model = (
+    raw_model = (
         os.getenv(f"{env_prefix}_MODEL")
         or os.getenv("AGENT_MODEL")
         or _DEFAULT_MODELS[provider]
     ).strip()
+    model = _MODEL_ALIASES.get(raw_model.lower(), raw_model)
 
     return AgentLLMSettings(
         agent_name=agent_name,
@@ -106,6 +111,8 @@ def create_agent_llm(
             if response_schema:
                 kwargs["response_schema"] = response_schema
         return ChatGoogleGenerativeAI(**kwargs), settings
+
+    from langchain_openai import ChatOpenAI
 
     if settings.provider == "deepseek":
         api_key = _required_env("DEEPSEEK_API_KEY", settings)
