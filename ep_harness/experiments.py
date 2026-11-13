@@ -48,6 +48,7 @@ CONFIGS = {
     "L2_semantic": dict(CAPSULE, ENABLE_EVIDENCE_CARDS="1", ENABLE_SEMANTIC_VERIFIER="1"),
     "Full_ep_harness": dict(CAPSULE, ENABLE_EVIDENCE_CARDS="1", ENABLE_SEMANTIC_VERIFIER="1", POLICY_MODE="adaptive"),
 }
+QUOTA_EXIT = 75  # main.py exit code when the provider quota is exhausted (EX_TEMPFAIL; argparse uses 2)
 # Values read from each finished run: (file, path in the JSON).
 METRICS = {
     "f1_ttps": ("eval_report.json", ("layer_2_audit", "f1_ttps")),
@@ -56,6 +57,9 @@ METRICS = {
     "tokens_out": ("eval_report.json", ("metadata", "openai_metrics", "output_tokens")),
     "cost_usd": ("eval_report.json", ("metadata", "openai_metrics", "total_cost_usd")),
     "latency_s": ("eval_report.json", ("metadata", "latency_seconds")),
+    "llm_calls": ("eval_report.json", ("metadata", "openai_metrics", "llm_calls")),
+    # Time spent waiting on provider rate limits is inside latency_s; subtract it to compare configurations.
+    "rate_limit_wait_s": ("eval_report.json", ("metadata", "openai_metrics", "rate_limit", "wait_seconds")),
     "ucr_findings": ("ech_measurement.json", ("findings", "unsupported_claim_rate")),
     "ucr_forwarded": ("ech_measurement.json", ("forwarded_findings", "unsupported_claim_rate")),
     "ucr_analysis": ("ech_measurement.json", ("analysis", "unsupported_claim_rate")),
@@ -83,7 +87,8 @@ def plan(name: str, configs=None, scenarios=SCENARIOS, repeats: int = 5) -> dict
 
 
 def _run_dir(runs_root: Path, run_name: str) -> Path | None:
-    found = sorted(runs_root.glob(f"{run_name}_*"))
+    """Latest finished folder of a run (one with eval_report.json); a run stopped half-way does not count."""
+    found = sorted(f for f in runs_root.glob(f"{run_name}_*") if (f / "eval_report.json").exists())
     return found[-1] if found else None
 
 
@@ -151,6 +156,9 @@ def main(argv=None) -> int:
         cmd.add_argument("--out", default="experiments")
         if name == "run":
             cmd.add_argument("--execute", action="store_true", help="actually run main.py (calls the LLM)")
+            cmd.add_argument("--runs", default="runs", help="where main.py writes run folders")
+            cmd.add_argument("--no-resume", action="store_true",
+                             help="run again even the runs that already finished under this experiment name")
     summ = sub.add_parser("summarize")
     summ.add_argument("--name", required=True)
     summ.add_argument("--out", default="experiments")
@@ -177,9 +185,17 @@ def main(argv=None) -> int:
         for run in experiment["runs"][:6]:
             print(" ", run["config"], run["scenario"], f"r{run['repeat']}")
         return 0
-    for run in experiment["runs"]:
+    for index, run in enumerate(experiment["runs"]):
+        if not args.no_resume and _run_dir(Path(args.runs), run["run_name"]):
+            print(f"[experiment] {run['run_name']}: already finished, skipped")
+            continue
         print(f"[experiment] {run['run_name']}")
-        subprocess.run(run["command"], env=dict(os.environ, **run["env"]), check=False)
+        code = subprocess.run(run["command"], env=dict(os.environ, **run["env"]), check=False).returncode
+        if code == QUOTA_EXIT:
+            left = len(experiment["runs"]) - index
+            print(f"[experiment] provider quota exhausted: stopped with {left} run(s) left. Run the same command "
+                  f"again (same --name {args.name}) once the quota resets; finished runs are skipped.")
+            return QUOTA_EXIT
     print(f"Done. Summarize with: python -m ep_harness.experiments summarize --name {args.name}")
     return 0
 

@@ -5,6 +5,7 @@ import re
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from agents.llm_config import create_agent_llm
+from src.rate_limit import is_rate_limit
 from prompts import (
     build_hunter_final_instruction,
     build_hunter_initial_messages,
@@ -180,6 +181,8 @@ class HunterAgent:
                                 tool_call_id=tool_call["id"],
                             ))
                         except Exception as e:
+                            if is_rate_limit(e):  # the rate-limit guard waits and calls again
+                                raise
                             output_text = f"Error: {str(e)}"
                             tool_results.append({
                                 "tool": tool_name,

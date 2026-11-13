@@ -29,7 +29,9 @@ from evaluation.reasoning_evaluator import ReasoningEvaluator
 from src.domain_pack import get_domain_pack_metadata
 from src.extractor import EvidenceExtractor
 from src.ioc_curator import IOCCurator
+from src.llm_usage import track_usage
 from src.mitre_mapper import MitreMapper
+from src.rate_limit import QuotaExhaustedError, RateLimitGuard, guarded
 from src.orchestration_toggles import (
     disabled_ttp_graph_context,
     load_orchestration_toggles,
@@ -275,6 +277,8 @@ def _run_task_with_policy(
             semantic=semantic,
         )
         status, output, reason, decisions = result.status, result.hunter_output, result.reason, result.decisions
+    except QuotaExhaustedError:
+        raise
     except Exception as error:  # a model or tool failure must not stop the whole run
         status, output, reason = "Error", last["output"], str(error)
     print(f"    [POLICY] {task['id']}: {status} ({reason})")
@@ -515,13 +519,16 @@ def _execute_agent_runtime(
             else None
         )
 
-        coordinator = CoordinatorAgent()
-        hunter = HunterAgent()
-        verifier = VerifierAgent()
-        analyst = AnalystAgent()
-        reporter = ReporterAgent()
-        feedback_agent = DebateFeedbackAgent() if is_debate else None
-        judge_agent = DebateJudgeAgent() if is_debate else None
+        # A provider rate limit (429) waits and calls again inside the guard: it never uses a task's
+        # retry budget nor marks a task Error. A daily quota stops the run (QuotaExhaustedError).
+        rate_guard = RateLimitGuard()
+        coordinator = guarded(CoordinatorAgent(), rate_guard, "coordinator")
+        hunter = guarded(HunterAgent(), rate_guard, "hunter")
+        verifier = guarded(VerifierAgent(), rate_guard, "verifier")
+        analyst = guarded(AnalystAgent(), rate_guard, "analyst")
+        reporter = guarded(ReporterAgent(), rate_guard, "reporter")
+        feedback_agent = guarded(DebateFeedbackAgent(), rate_guard, "debate_feedback") if is_debate else None
+        judge_agent = guarded(DebateJudgeAgent(), rate_guard, "debate_judge") if is_debate else None
 
         llm_roles = ["coordinator", "hunter", "verifier", "analyst", "reporter", "tools"]
         if is_debate:
@@ -554,7 +561,7 @@ def _execute_agent_runtime(
         final_results = []
         debate_records = []
 
-        with get_openai_callback() as cb:
+        with get_openai_callback() as cb, track_usage() as usage:
             print("\n[Extractor] Sanitizing telemetry and building deterministic evidence ledger...")
             sanitized_log = extractor.sanitize_raw_log(log_data)
             # Invariant: no technique ID (a ground-truth label) reaches the Coordinator, the extractor or any agent.
@@ -920,6 +927,8 @@ def _execute_agent_runtime(
                                     artifact=failed_artifact,
                                 )
 
+                    except QuotaExhaustedError:
+                        raise
                     except Exception as e:
                         error_msg = str(e)
                         retries += 1
@@ -1284,8 +1293,11 @@ def _execute_agent_runtime(
                 json.dump(measurement, f, ensure_ascii=False, indent=2)
 
         latency = time.time() - start_time
-        total_input = cb.prompt_tokens
-        total_output = cb.completion_tokens
+        # Provider-neutral counts (any model); get_openai_callback only sees OpenAI models and stays
+        # the source of the cost estimate, which is therefore 0 for Google/Gemma.
+        llm_usage = usage.summary()
+        total_input = llm_usage["input_tokens"] if usage.enabled else cb.prompt_tokens
+        total_output = llm_usage["output_tokens"] if usage.enabled else cb.completion_tokens
         total_cost = cb.total_cost
 
         return {
@@ -1319,6 +1331,11 @@ def _execute_agent_runtime(
                 "input_tokens": total_input,
                 "output_tokens": total_output,
                 "total_cost_usd": round(total_cost, 6),
+                "cost_source": "openai_callback (OpenAI models only)",
+                "llm_calls": llm_usage["llm_calls"],
+                "by_model": llm_usage["by_model"],
+                "usage_counted": llm_usage["counted"],
+                "rate_limit": rate_guard.summary(),
             },
             "debate_records": debate_records,
             "debate_path": debate_path,
@@ -1504,10 +1521,13 @@ def _print_benchmark_summary(runtime_bundle, final_eval_data):
     print(f"    - Execution Time:         {latency:.2f} seconds")
     print(f"    - Ground Truth Case:      {final_eval_data['metadata'].get('ground_truth_case')}")
     print("-" * 70)
-    print("[2] RESOURCE CONSUMPTION (OPENAI)")
+    print("[2] RESOURCE CONSUMPTION (ALL PROVIDERS)")
+    print(f"    - LLM Calls:              {openai_metrics.get('llm_calls', 0):,}")
     print(f"    - Input Tokens:           {openai_metrics['input_tokens']:,}")
     print(f"    - Output Tokens:          {openai_metrics['output_tokens']:,}")
-    print(f"    - API Cost Estimate:      ${openai_metrics['total_cost_usd']:.6f} USD")
+    print(f"    - API Cost Estimate:      ${openai_metrics['total_cost_usd']:.6f} USD (OpenAI models only)")
+    rate_limit = openai_metrics.get("rate_limit") or {}
+    print(f"    - Rate-limit Waits:       {rate_limit.get('waits', 0)} ({rate_limit.get('wait_seconds', 0)} s)")
     print("-" * 70)
     print("[3] RELIABILITY METRICS")
     print(f"    - Layer 1 (Recall):       {results_t1['recall']:.4f}")
@@ -1715,6 +1735,9 @@ def cli_main(argv=None, default_strategy=None):
     except json.JSONDecodeError:
         print("ERROR: Scenario telemetry file is not valid JSON.")
         return 1
+    except QuotaExhaustedError as err:
+        print(f"ERROR: Provider quota exhausted, run stopped (not a model failure): {err}")
+        return 75  # EX_TEMPFAIL: ep_harness.experiments stops and can resume later
     except Exception as err:
         print(f"ERROR: Unexpected failure: {err}")
         return 1

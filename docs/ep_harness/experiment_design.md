@@ -66,6 +66,23 @@ python -m ep_harness.experiments summarize --name EXP20261110     # summary.json
 configuration's environment; the summary reads `eval_report.json` and `ech_measurement.json` from each run folder
 and reports mean ± standard deviation per configuration and scenario.
 
+## Rate limits and usage counting
+
+- **Rate limits are not model failures.** Every agent is wrapped in `src/rate_limit.guarded`: a call that hits a
+  per-minute limit (HTTP 429 / `RESOURCE_EXHAUSTED`) waits (the provider's suggested delay + 1 s, otherwise
+  `LLM_RATE_LIMIT_WAIT_SECONDS` x attempt, capped by `LLM_RATE_LIMIT_MAX_WAIT_SECONDS`) and is called again, up to
+  `LLM_RATE_LIMIT_MAX_WAITS` times. The wait spends neither the MA-SOC retry nor the policy budget, so the
+  configurations keep the same budget whatever the provider's load. Tools and the Hunter's tool loop re-raise rate
+  limits instead of turning them into tool errors.
+- **A daily quota stops the run** (`QuotaExhaustedError`, exit code 75) instead of recording failed tasks.
+  `ep_harness.experiments run` then stops; running the same command again with the same `--name` skips the runs
+  that finished (a run counts as finished only when it has `eval_report.json`).
+- **Calls and tokens for any provider.** `src/llm_usage.track_usage` counts every model call and its tokens from
+  LangChain's `usage_metadata`; `get_openai_callback` only saw OpenAI models. `openai_metrics` in
+  `eval_report.json` keeps its name and now carries `llm_calls`, `by_model` and `rate_limit` (waits, seconds).
+  Cost is still estimated for OpenAI models only. Latency includes rate-limit waits; subtract
+  `rate_limit_wait_s` when comparing configurations.
+
 ## Known limits
 
 - The instrument's semantic check is the rule layer only; a judge-based measurement would need a fixed model

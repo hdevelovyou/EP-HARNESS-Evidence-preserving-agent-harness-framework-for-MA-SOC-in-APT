@@ -43,6 +43,7 @@ import test_policy  # noqa: E402
 import test_label_guard  # noqa: E402
 import test_claim_dataset  # noqa: E402
 import test_baseline  # noqa: E402
+import test_rate_limit  # noqa: E402
 import test_core  # noqa: E402
 
 fixtures = {
@@ -52,7 +53,7 @@ fixtures = {
 
 MODULES = (test_capsule_schema, test_core, test_inline_gate, test_cited_claims, test_semantic,
            test_harness_assist, test_policy, test_label_guard,
-           test_claim_dataset, test_baseline)
+           test_claim_dataset, test_baseline, test_rate_limit)
 # Optional arguments pick modules, e.g. `python tests/run_tests.py test_capsule_schema`.
 selected = set(sys.argv[1:])
 unknown = selected - {m.__name__ for m in MODULES}

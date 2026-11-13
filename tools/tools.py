@@ -4,6 +4,7 @@ from langchain.tools import tool
 from agents.llm_config import create_agent_llm
 from src.domain_pack import load_domain_pack
 from src.retriever import Retriever
+from src.rate_limit import is_rate_limit
 from functools import lru_cache
 from collections import defaultdict
 import ipaddress
@@ -435,6 +436,8 @@ def ner_tool(text: str):
     try:
         return chain.invoke({"text": text})
     except Exception as e:
+        if is_rate_limit(e):  # let the rate-limit guard wait and call again
+            raise
         return {"error": f"Lỗi xử lý NER: {str(e)}"}
     
 @tool

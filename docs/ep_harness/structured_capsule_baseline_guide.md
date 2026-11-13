@@ -115,6 +115,11 @@ Hạn mức gói miễn phí tính theo project, xem số thật trong Google AI
 mỗi task: Hunter theo số tool bắt buộc + 1 lời gọi kết luận, Verifier; rồi Analyst, Reporter), nên nên chạy thử nhỏ
 trước để đếm số lời gọi thật rồi mới lên lịch cho cả ma trận.
 
+Khi bị giới hạn theo phút (429), mọi agent tự chờ rồi gọi lại, không tính là một lần retry. Khi hết hạn mức ngày, run
+dừng (mã thoát 75) và bộ chạy thí nghiệm dừng theo; hôm sau chạy lại **đúng lệnh cũ với cùng `--name`**, các run đã
+xong được bỏ qua. Số lời gọi, token theo model và thời gian chờ nằm trong `eval_report.json` →
+`metadata.openai_metrics` (`llm_calls`, `by_model`, `rate_limit`).
+
 ---
 
 ## 4. Kiểm tra đầu ra
