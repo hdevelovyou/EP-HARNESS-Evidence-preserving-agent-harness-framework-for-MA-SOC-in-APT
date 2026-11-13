@@ -150,8 +150,8 @@ python debate_main.py
 Useful debate runtime variables:
 
 - `DEBATE_TIMEOUT_SECONDS`: default `300`; after this, unresolved disagreement is escalated to Judge.
-- `DEBATE_FEEDBACK_MODEL`: default `gpt-4.1-mini`.
-- `DEBATE_JUDGE_MODEL`: default `gpt-4.1-mini`.
+- `DEBATE_FEEDBACK_MODEL`: default `models/gemma-4-26b-a4b-it`.
+- `DEBATE_JUDGE_MODEL`: default `models/gemma-4-26b-a4b-it`.
 - `DEBATE_MODEL_TIMEOUT_SECONDS`: default `300`.
 
 The debate workflow reorders agent communication and feedback only. It reuses
