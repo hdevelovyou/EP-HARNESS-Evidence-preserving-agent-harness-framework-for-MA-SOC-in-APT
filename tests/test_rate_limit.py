@@ -9,7 +9,7 @@ import pytest
 
 from src.llm_usage import UsageCounter
 from src.rate_limit import (QuotaExhaustedError, RateLimitGuard, guarded, is_daily_quota, is_rate_limit,
-                            suggested_delay)
+                            limit_reason, suggested_delay)
 from test_inline_gate import hunter_output, stubbed_main
 
 REPO = Path(__file__).resolve().parents[1]
@@ -42,6 +42,8 @@ def test_rate_limit_errors_are_recognised_by_type_and_message():
     assert not is_rate_limit(ValueError("400 invalid argument: tool_call_id"))
     assert suggested_delay(Exception(PER_MINUTE)) == 23.4 and suggested_delay(Exception(PER_DAY)) == 41.0
     assert suggested_delay(Exception("429")) is None
+    assert limit_reason(Exception(PER_MINUTE)) == "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"
+    assert limit_reason(Exception("429  too   many")) == "429 too many"
 
 
 def test_guard_waits_then_succeeds_without_spending_retries():

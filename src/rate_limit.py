@@ -64,6 +64,20 @@ def suggested_delay(error: BaseException):
     return None
 
 
+_QUOTA_NAME = re.compile(r"(?:quotaId|quota_id|quota_metric|quotaMetric)\W+([\w./-]+)", re.IGNORECASE)
+
+
+def limit_reason(error: BaseException) -> str:
+    """Which quota was hit (e.g. requests or input tokens per minute), short enough for one log line."""
+    names = []
+    for item in _chain(error):
+        found = [n.rstrip("./-") for n in _QUOTA_NAME.findall(str(item))]
+        names += [n for n in found if n not in names]
+    if names:
+        return ", ".join(names[:3])
+    return " ".join(str(error).split())[:160]
+
+
 class RateLimitGuard:
     """Calls a function, waiting and calling again while the provider rate-limits it."""
 
@@ -104,7 +118,7 @@ class RateLimitGuard:
                     self.wait_seconds += delay
                     self.by_role[role] = self.by_role.get(role, 0) + 1
                 print(f"    [RATE LIMIT] {role}: waiting {delay:.0f}s ({waits}/{self.max_waits}); "
-                      "not counted as a retry.")
+                      f"not counted as a retry. Reason: {limit_reason(error)}")
                 self._sleep(delay)
 
     def summary(self) -> dict:
