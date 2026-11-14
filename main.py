@@ -19,13 +19,19 @@ from agents.task_catalog import TASK_BY_ID, TASK_INVENTORY, clone_task
 from agents.verifier_agent import VerifierAgent
 from ep_harness.claim_parser import remove_claims_block
 from ep_harness.inline import InlineECH
+from ep_harness.label_guard import assert_no_labels, mask_labels, unmask_artifacts
+from ep_harness.measurement import measure_run
+from ep_harness.policy import AdaptivePolicy
+from ep_harness.policy_runner import run_analysis, run_task
 from prompts import build_analyst_claims_contract
 from evaluation.evaluator import SOCEvaluator
 from evaluation.reasoning_evaluator import ReasoningEvaluator
 from src.domain_pack import get_domain_pack_metadata
 from src.extractor import EvidenceExtractor
 from src.ioc_curator import IOCCurator
+from src.llm_usage import track_usage
 from src.mitre_mapper import MitreMapper
+from src.rate_limit import QuotaExhaustedError, RateLimitGuard, guarded
 from src.orchestration_toggles import (
     disabled_ttp_graph_context,
     load_orchestration_toggles,
@@ -222,6 +228,95 @@ def _compose_scoring_entities(report_entities, ioc_entities):
         "hashes": ioc_entities.get("hashes", []),
         "techniques": report_entities.get("techniques", []),
     }
+
+
+def _run_task_with_policy(
+    task,
+    *,
+    ech,
+    policy,
+    hunter,
+    verifier,
+    summarizer,
+    extractor,
+    evidence_store,
+    dag_state,
+    upstream_context,
+    final_results,
+    semantic,
+    evidence_cards_enabled=True,
+):
+    """One task under the Adaptive Evidence-Triggered Policy (POLICY_MODE=adaptive / always_review)."""
+    task_log = extractor.build_task_view(task, evidence_store)
+    evidence_cards = ech.evidence_cards(task_log) if ech.cited and evidence_cards_enabled else ""
+    hunter_log = f"{evidence_cards}\n\n{task_log}" if evidence_cards else task_log
+    last = {"output": ""}
+
+    def hunter_run(feedback):
+        history = hunter.run(
+            hunter_log,
+            assigned_tasks=[task],
+            upstream_context=upstream_context,
+            verifier_feedback=feedback,
+            previous_hunter_output=last["output"] or None,
+        )
+        last["output"] = history[-1].content if history else ""
+        return last["output"]
+
+    print(f"\n[+] Policy ({policy.mode}): {task['id']} - {task['name']}")
+    decisions = []
+    try:
+        result = run_task(
+            task,
+            ech,
+            policy,
+            hunter_run=hunter_run,
+            hunter_revise=lambda request, claims: hunter.revise_claims(task, request, claims, evidence_cards),
+            judge=verifier.judge_claims,
+            verify=lambda output: verifier.verify(task["name"], output, task_log),
+            semantic=semantic,
+        )
+        status, output, reason, decisions = result.status, result.hunter_output, result.reason, result.decisions
+    except QuotaExhaustedError:
+        raise
+    except Exception as error:  # a model or tool failure must not stop the whole run
+        status, output, reason = "Error", last["output"], str(error)
+    print(f"    [POLICY] {task['id']}: {status} ({reason})")
+
+    extra = {} if status == "Verified" else {"status": status, "reason": reason}
+    artifact = summarizer.summarize(task, remove_claims_block(output), evidence_store=evidence_store, **extra)
+    entry = {
+        "task_id": task["id"],
+        "task_name": task["name"],
+        "status": status,
+        "depends_on": task.get("depends_on", []),
+        "selected_by_coordinator": task.get("selected_by_coordinator", False),
+        "result": output,
+        "artifact": artifact,
+        "policy_decisions": decisions,
+    }
+    if status != "Verified":
+        entry["reason"] = reason
+    final_results.append(entry)
+    if status == "Verified":
+        record_task_success(dag_state, task, output, artifact=artifact)
+    else:
+        record_task_failure(dag_state, task, output, reason, artifact=artifact)
+
+
+def _env_flag(name, default=False):
+    raw = os.getenv(name, "").strip().lower()
+    return default if not raw else raw in {"1", "true", "yes", "on"}
+
+
+def _scoring_entities(evaluator, source, source_type, label_mapping):
+    """Entities for scoring: techniques from the masked source, everything else from restored artifact paths."""
+    masked = evaluator._extract_entities(source, source_type=source_type)
+    if not label_mapping:
+        return masked
+    restored = evaluator._extract_entities(unmask_artifacts(source, label_mapping), source_type=source_type)
+    restored["techniques"] = masked.get("techniques", [])
+    return restored
 
 
 def _is_verifier_ok(check_result):
@@ -424,13 +519,16 @@ def _execute_agent_runtime(
             else None
         )
 
-        coordinator = CoordinatorAgent()
-        hunter = HunterAgent()
-        verifier = VerifierAgent()
-        analyst = AnalystAgent()
-        reporter = ReporterAgent()
-        feedback_agent = DebateFeedbackAgent() if is_debate else None
-        judge_agent = DebateJudgeAgent() if is_debate else None
+        # A provider rate limit (429) waits and calls again inside the guard: it never uses a task's
+        # retry budget nor marks a task Error. A daily quota stops the run (QuotaExhaustedError).
+        rate_guard = RateLimitGuard()
+        coordinator = guarded(CoordinatorAgent(), rate_guard, "coordinator")
+        hunter = guarded(HunterAgent(), rate_guard, "hunter")
+        verifier = guarded(VerifierAgent(), rate_guard, "verifier")
+        analyst = guarded(AnalystAgent(), rate_guard, "analyst")
+        reporter = guarded(ReporterAgent(), rate_guard, "reporter")
+        feedback_agent = guarded(DebateFeedbackAgent(), rate_guard, "debate_feedback") if is_debate else None
+        judge_agent = guarded(DebateJudgeAgent(), rate_guard, "debate_judge") if is_debate else None
 
         llm_roles = ["coordinator", "hunter", "verifier", "analyst", "reporter", "tools"]
         if is_debate:
@@ -463,10 +561,20 @@ def _execute_agent_runtime(
         final_results = []
         debate_records = []
 
-        with get_openai_callback() as cb:
+        with get_openai_callback() as cb, track_usage() as usage:
             print("\n[Extractor] Sanitizing telemetry and building deterministic evidence ledger...")
             sanitized_log = extractor.sanitize_raw_log(log_data)
+            # Invariant: no technique ID (a ground-truth label) reaches the Coordinator, the extractor or any agent.
+            label_mask = mask_labels(sanitized_log, markers=_env_flag("MASK_SIMULATION_MARKERS", default=True))
+            sanitized_log = label_mask.text
+            assert_no_labels(sanitized_log, "sanitized telemetry")
             evidence_store = extractor.extract(sanitized_log)
+            assert_no_labels(evidence_store, "evidence store")
+            print(
+                f"[LabelGuard] Masked {label_mask.to_dict()['technique_ids']} technique ID(s) and "
+                f"{label_mask.to_dict()['markers']} simulation marker(s) "
+                f"({sum(label_mask.counts.values())} occurrence(s)); no label left in the runtime input."
+            )
             evidence_store_path = os.path.join(run_dir, "evidence_store.json")
             with open(evidence_store_path, "w", encoding="utf-8") as f:
                 json.dump(evidence_store, f, ensure_ascii=False, indent=2)
@@ -484,8 +592,21 @@ def _execute_agent_runtime(
                 if orchestration_toggles.enable_contract_gate
                 else None
             )
+            # shadow: capsules are built and recorded, nothing is blocked (the Structured Capsule baseline)
+            gate_enforced = ech is not None and orchestration_toggles.contract_gate_mode == "inline"
             if ech is not None:
-                print("[ECH] Contract Gate enabled inline at Hunter->Verifier, Verifier->Analyst, Analyst->Reporter.")
+                print(
+                    f"[ECH] Contract Gate ({orchestration_toggles.contract_gate_mode}) at Hunter->Verifier, "
+                    "Verifier->Analyst, Analyst->Reporter."
+                )
+            policy = (
+                AdaptivePolicy(mode=orchestration_toggles.policy_mode)
+                if ech is not None and orchestration_toggles.policy_mode in ("adaptive", "always_review")
+                else None
+            )
+            if policy is not None:
+                ech.policy = policy
+                print(f"[POLICY] {policy.mode}: budget {policy.budget.to_dict()['limits']}")
 
             coordinator_plan = coordinator.plan(sanitized_log)
             if is_debate:
@@ -567,13 +688,42 @@ def _execute_agent_runtime(
             print(f"[{log_tag}] CyberTeam DAG saved to: {os.path.abspath(dag_path)}")
 
             for task in cyber_plan:
+                if policy is not None:
+                    _run_task_with_policy(
+                        task,
+                        ech=ech,
+                        policy=policy,
+                        hunter=hunter,
+                        verifier=verifier,
+                        summarizer=summarizer,
+                        extractor=extractor,
+                        evidence_store=evidence_store,
+                        dag_state=dag_state,
+                        upstream_context=(
+                            build_upstream_context(task, dag_state)
+                            if orchestration_toggles.dag_orchestrator
+                            else ""
+                        ),
+                        final_results=final_results,
+                        semantic=orchestration_toggles.enable_semantic_verifier,
+                        evidence_cards_enabled=orchestration_toggles.enable_evidence_cards,
+                    )
+                    continue
                 success = False
                 retries = 0
-                max_retries = 2
+                # MA-SOC's paper allows one re-call; the original code had 2 (3 attempts).
+                max_retries = int(os.getenv("MASOC_MAX_RETRIES", "1"))
                 last_feedback = None
                 last_hunter_output = None
                 last_artifact = None
                 task_log = extractor.build_task_view(task, evidence_store)
+                # Cited mode: the harness indexes the evidence so the Hunter picks IDs instead of searching for them.
+                evidence_cards = (
+                    ech.evidence_cards(task_log)
+                    if ech is not None and ech.cited and orchestration_toggles.enable_evidence_cards
+                    else ""
+                )
+                hunter_log = f"{evidence_cards}\n\n{task_log}" if evidence_cards else task_log
 
                 while not success and retries <= max_retries:
                     stage_prefix = "Debate Processing" if is_debate else "Processing"
@@ -589,7 +739,7 @@ def _execute_agent_runtime(
                             else ""
                         )
                         task_history = hunter.run(
-                            task_log,
+                            hunter_log,
                             assigned_tasks=[task],
                             upstream_context=upstream_context,
                             verifier_feedback=last_feedback,
@@ -621,7 +771,7 @@ def _execute_agent_runtime(
                             if _should_revise(hunter_feedback, debate_strategy, hunter_debate_started):
                                 debate_feedback_text = _feedback_text(hunter_feedback)
                                 task_history = hunter.run(
-                                    task_log,
+                                    hunter_log,
                                     assigned_tasks=[task],
                                     upstream_context=upstream_context,
                                     verifier_feedback=debate_feedback_text,
@@ -662,24 +812,37 @@ def _execute_agent_runtime(
                         last_hunter_output = summarizer.compact_for_retry(last_artifact)
 
                         gate_outcome = ech.hunter_handoff(task["id"], hunter_output) if ech else None
-                        gate_blocked = gate_outcome is not None and not gate_outcome.accepted
+                        gate_blocked = gate_enforced and gate_outcome is not None and not gate_outcome.accepted
                         if gate_blocked:
                             print(
                                 f"    [GATE] Finding {gate_outcome.capsule_id} is {gate_outcome.status}; "
                                 "Verifier not called."
                             )
                             check_result = gate_outcome.feedback
+                        elif ech is not None and orchestration_toggles.enable_semantic_verifier:
+                            # Claim-level review: rules first, then one judge call only for claims they could not reject.
+                            semantic_report = ech.semantic_review(task["id"])
+                            if semantic_report.pending_judge:
+                                judge_answer = verifier.judge_claims(
+                                    task["name"],
+                                    ech.judge_items(task["id"], semantic_report),
+                                )
+                                semantic_report = ech.apply_judge(semantic_report, judge_answer)
+                            semantic_report = ech.finish_semantic_review(task["id"], semantic_report)
+                            print(f"    [SEMANTIC] {semantic_report.capsule_id}: {semantic_report.counts()}")
+                            check_result = semantic_report.feedback()
                         else:
                             check_result = verifier.verify(task["name"], hunter_output, task_log)
                         check_str = str(check_result).strip()
 
                         verifier_handoff = None
                         if ech is not None and not gate_blocked:
-                            ech.record_verifier(task["id"], _is_verifier_ok(check_str), check_str)
+                            if not orchestration_toggles.enable_semantic_verifier:
+                                ech.record_verifier(task["id"], _is_verifier_ok(check_str), check_str)
                             if _is_verifier_ok(check_str):
                                 verifier_handoff = ech.verifier_handoff(task["id"])
 
-                        if verifier_handoff is not None and not verifier_handoff.accepted:
+                        if gate_enforced and verifier_handoff is not None and not verifier_handoff.accepted:
                             # Blocked at Verifier->Analyst: a Hunter retry cannot fix this edge.
                             print(
                                 f"    [GATE] {verifier_handoff.capsule_id} is {verifier_handoff.status}; "
@@ -764,6 +927,8 @@ def _execute_agent_runtime(
                                     artifact=failed_artifact,
                                 )
 
+                    except QuotaExhaustedError:
+                        raise
                     except Exception as e:
                         error_msg = str(e)
                         retries += 1
@@ -915,7 +1080,30 @@ def _execute_agent_runtime(
                 debate_records.append(analyst_debate_record)
 
             ungated_analysis = deep_analysis
-            if ech is not None:
+            if ech is not None and policy is not None:
+                # Claim by claim: remove fabricated parents by code, revise only failing claims, withhold the rest.
+                analysis_result = run_analysis(
+                    ech,
+                    policy,
+                    deep_analysis,
+                    analyst_rerun=lambda feedback: analyst.analyze_incident(
+                        results_str,
+                        f"{analysis_context}\n\n{feedback}",
+                        entity_context=entity_context,
+                        ttp_relations_context=ttp_graph_prompt_context,
+                    ),
+                    analyst_revise=lambda request, claims: analyst.revise_claims(request, claims),
+                )
+                ungated_analysis, deep_analysis = analysis_result.analysis, analysis_result.for_reporter
+                print(
+                    f"[POLICY] Analysis {'accepted' if analysis_result.accepted else 'not accepted'}: "
+                    f"{[d['action'] for d in analysis_result.decisions]}"
+                )
+            elif ech is not None and not gate_enforced:
+                ech.analyst_handoff(deep_analysis)  # recorded only
+                ungated_analysis = deep_analysis
+                deep_analysis = ech.forward_unchecked(deep_analysis)
+            elif ech is not None:
                 analysis_outcome = ech.analyst_handoff(deep_analysis)
                 analyst_gate_retries = int(os.getenv("CONTRACT_GATE_ANALYST_RETRIES", "1"))
                 while (
@@ -1099,9 +1287,17 @@ def _execute_agent_runtime(
                 f.write(report_str)
             print(f"[Reporter] Final report sealed at: {os.path.abspath(report_path)}")
 
+            # Same deterministic instrument for every configuration (no model), after the report is sealed.
+            measurement = measure_run(evidence_store, final_results, ungated_analysis, report_str)
+            with open(os.path.join(run_dir, "ech_measurement.json"), "w", encoding="utf-8") as f:
+                json.dump(measurement, f, ensure_ascii=False, indent=2)
+
         latency = time.time() - start_time
-        total_input = cb.prompt_tokens
-        total_output = cb.completion_tokens
+        # Provider-neutral counts (any model); get_openai_callback only sees OpenAI models and stays
+        # the source of the cost estimate, which is therefore 0 for Google/Gemma.
+        llm_usage = usage.summary()
+        total_input = llm_usage["input_tokens"] if usage.enabled else cb.prompt_tokens
+        total_output = llm_usage["output_tokens"] if usage.enabled else cb.completion_tokens
         total_cost = cb.total_cost
 
         return {
@@ -1114,6 +1310,8 @@ def _execute_agent_runtime(
             "report_path": report_path,
             "report_str": report_str,
             "sanitized_log": sanitized_log,
+            # Post-seal only: pseudonym -> original, to restore artifact paths for IOC scoring.
+            "label_mask": label_mask.to_dict(),
             "evidence_store": evidence_store,
             "final_results": final_results,
             "deep_analysis": deep_analysis,
@@ -1133,10 +1331,16 @@ def _execute_agent_runtime(
                 "input_tokens": total_input,
                 "output_tokens": total_output,
                 "total_cost_usd": round(total_cost, 6),
+                "cost_source": "openai_callback (OpenAI models only)",
+                "llm_calls": llm_usage["llm_calls"],
+                "by_model": llm_usage["by_model"],
+                "usage_counted": llm_usage["counted"],
+                "rate_limit": rate_guard.summary(),
             },
             "debate_records": debate_records,
             "debate_path": debate_path,
             "ech_audit": ech_audit,
+            "measurement": measurement,
             "debate_timeout": debate_timeout,
         }
 
@@ -1164,18 +1368,20 @@ def evaluate_sealed_run(runtime_bundle, ground_truth_path=None, manifest_path=No
     evaluator = SOCEvaluator()
     reasoning_evaluator = ReasoningEvaluator()
 
-    pre_eval_entities = evaluator._extract_entities(
-        runtime_bundle["sanitized_log"],
-        source_type="log",
-    )
-    report_entities = evaluator._extract_entities(
-        sealed_report_str,
-        source_type="report",
-    )
+    # Techniques are scored on the masked texts (no credit for reading a path); IOCs on texts whose
+    # artifact paths are restored, so they can match the ground-truth artifacts.
+    label_mapping = (runtime_bundle.get("label_mask") or {}).get("mapping", {})
+    if label_mapping:
+        with open(os.path.join(run_dir, "label_mask.json"), "w", encoding="utf-8") as f:
+            json.dump(runtime_bundle["label_mask"], f, ensure_ascii=False, indent=2)
+    pre_eval_entities = _scoring_entities(evaluator, runtime_bundle["sanitized_log"], "log", label_mapping)
+    report_entities = _scoring_entities(evaluator, sealed_report_str, "report", label_mapping)
     if orchestration_toggles.ioc_curator:
-        curated_ioc_entities = evaluator._extract_entities(
+        curated_ioc_entities = _scoring_entities(
+            evaluator,
             curated_iocs.get("indicators", {}),
-            source_type="curated_iocs",
+            "curated_iocs",
+            label_mapping,
         )
         post_entities = _compose_scoring_entities(report_entities, curated_ioc_entities)
     else:
@@ -1315,10 +1521,13 @@ def _print_benchmark_summary(runtime_bundle, final_eval_data):
     print(f"    - Execution Time:         {latency:.2f} seconds")
     print(f"    - Ground Truth Case:      {final_eval_data['metadata'].get('ground_truth_case')}")
     print("-" * 70)
-    print("[2] RESOURCE CONSUMPTION (OPENAI)")
+    print("[2] RESOURCE CONSUMPTION (ALL PROVIDERS)")
+    print(f"    - LLM Calls:              {openai_metrics.get('llm_calls', 0):,}")
     print(f"    - Input Tokens:           {openai_metrics['input_tokens']:,}")
     print(f"    - Output Tokens:          {openai_metrics['output_tokens']:,}")
-    print(f"    - API Cost Estimate:      ${openai_metrics['total_cost_usd']:.6f} USD")
+    print(f"    - API Cost Estimate:      ${openai_metrics['total_cost_usd']:.6f} USD (OpenAI models only)")
+    rate_limit = openai_metrics.get("rate_limit") or {}
+    print(f"    - Rate-limit Waits:       {rate_limit.get('waits', 0)} ({rate_limit.get('wait_seconds', 0)} s)")
     print("-" * 70)
     print("[3] RELIABILITY METRICS")
     print(f"    - Layer 1 (Recall):       {results_t1['recall']:.4f}")
@@ -1526,6 +1735,9 @@ def cli_main(argv=None, default_strategy=None):
     except json.JSONDecodeError:
         print("ERROR: Scenario telemetry file is not valid JSON.")
         return 1
+    except QuotaExhaustedError as err:
+        print(f"ERROR: Provider quota exhausted, run stopped (not a model failure): {err}")
+        return 75  # EX_TEMPFAIL: ep_harness.experiments stops and can resume later
     except Exception as err:
         print(f"ERROR: Unexpected failure: {err}")
         return 1

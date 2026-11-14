@@ -5,6 +5,7 @@ extractor, summarizer, IOC curator and DAG code are the real ones.
 """
 
 import contextlib
+import hashlib
 import json
 import os
 import sys
@@ -14,15 +15,16 @@ from pathlib import Path
 from ep_harness.inline import InlineECH
 
 REPO = Path(__file__).resolve().parents[1]
-GOOD_T7 = "Outbound C2 contact to compdatasystems.com observed from the beacon host 10.10.12.110."
+GOOD_T7 = "Outbound C2 contact to 172.31.234.82 observed from splunkd.exe on the workstation."
 FAKE_T7 = "Scheduled task persistence created at 02:00 according to event-9999 in the Security log."
-T3_BODY = "Beacon traffic to compdatasystems.com repeated at a fixed interval overnight."
-ANALYSIS_GOOD = "C2 beaconing to compdatasystems.com from 10.10.12.110 is confirmed by the verified findings."
+T3_BODY = "Beacon traffic to 172.31.234.82 repeated at a fixed interval."
+ANALYSIS_GOOD = "C2 traffic to 172.31.234.82 from splunkd.exe is confirmed by the verified findings."
 ANALYSIS_FAKE = "Lateral movement to the domain controller is recorded in event-9999 of the Security log."
 
 
 def hunter_output(body, tools):
-    audit = [{"tool": t, "status": "ok", "output_sha256": f"{i:064x}"} for i, t in enumerate(tools, 1)]
+    # One digest per tool name, as a real tool run with the same output would give.
+    audit = [{"tool": t, "status": "ok", "output_sha256": hashlib.sha256(t.encode()).hexdigest()} for t in tools]
     return f"{body}\n\nTool Execution Audit:\n{json.dumps(audit)}"
 
 
@@ -198,7 +200,7 @@ def install_script(main, calls):
 
 def run_stubbed(tmp_path, gate_enabled):
     calls = {"hunter": [], "verifier": [], "analyst": [], "reporter": []}
-    raw = (REPO / "datasets" / "CobaltStrike_Lockbit" / "artifacts.json").read_text(encoding="utf-8")
+    raw = (REPO / "extracted_scenarios" / "S23_telemetry.json").read_text(encoding="utf-8")
     with stubbed_main(tmp_path, gate_enabled) as main:
         install_script(main, calls)
         bundle = main._execute_agent_runtime(raw, scenario_name="STUB", strategy="hierarchical")
@@ -213,7 +215,7 @@ def test_main_runs_gate_inline_at_three_handoffs(tmp_path):
     # Hunter->Verifier: blocked findings never reach the Verifier.
     assert calls["verifier"] == ["Infrastructure Extraction"]
     assert calls["hunter"][1] == ("T7", "CONTRACT GATE")
-    assert len([c for c in calls["hunter"] if c[0] == "T3"]) == 3
+    assert len([c for c in calls["hunter"] if c[0] == "T3"]) == 2   # one re-call, as in MA-SOC's paper
 
     # Analyst->Reporter: one retry with gate feedback, then the bad claim is withheld.
     assert calls["analyst"] == [False, True]

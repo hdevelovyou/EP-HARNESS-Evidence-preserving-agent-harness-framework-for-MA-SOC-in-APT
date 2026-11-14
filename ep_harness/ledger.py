@@ -4,7 +4,8 @@ Three record types:
   event     - original telemetry, content-hashed; never modified
   artifact  - a tool execution (tool name, task, output hash)
   capsule   - a proposed handoff (content hash)
-plus ``decision`` records that carry every status change of a capsule.
+plus ``decision`` records that carry every status change of a capsule, and
+``claim_verdict`` records that carry the semantic verdict on one claim.
 
 Re-adding an identical record is idempotent; re-adding an ID with different
 content raises LedgerIntegrityError. That is how fabricated or silently edited
@@ -18,7 +19,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from .capsule import STATUS_TRANSITIONS, STATUSES, Capsule
+from .capsule import CLAIM_VERDICTS, SEMANTIC_ACTORS, STATUS_TRANSITIONS, STATUSES, Capsule, parse_claim_ref
 
 
 class LedgerIntegrityError(ValueError):
@@ -103,6 +104,22 @@ class EvidenceLedger:
         self._capsule_status[capsule_id] = status
         return record
 
+    def record_claim_verdict(self, ref: str, verdict: str, actor: str, detail: dict | None = None) -> dict:
+        """Append a semantic verdict on one claim (ref = CAP-...#cN). Later verdicts never erase earlier ones."""
+        if verdict not in CLAIM_VERDICTS:
+            raise ValueError(f"unknown claim verdict {verdict!r}")
+        if actor not in SEMANTIC_ACTORS:
+            raise LedgerIntegrityError(f"{actor!r} may not give semantic verdicts")
+        parsed = parse_claim_ref(ref)
+        capsule = self._capsules.get(parsed[0]) if parsed else None
+        if capsule is None or parsed[1] not in {c["claim_id"] for c in capsule["capsule"]["claims"]}:
+            raise LedgerIntegrityError(f"verdict for unknown claim {ref!r}")
+        if actor == capsule["capsule"]["source"]:
+            raise LedgerIntegrityError(f"{actor!r} may not judge its own claim {ref!r}")
+        record = {"ref": ref, "verdict": verdict, "actor": actor, "detail": detail or {}}
+        self._journal.append({"seq": len(self._journal), "type": "claim_verdict", "record": record})
+        return record
+
     def _append(self, record_type, store, key, record, compare_key):
         existing = store.get(key)
         if existing is not None:
@@ -129,11 +146,16 @@ class EvidenceLedger:
     def event(self, event_id: str) -> dict | None:
         return self._events.get(event_id)
 
+    def event_ids(self) -> list[str]:
+        return list(self._events)
+
     def event_text(self, event_id: str) -> str:
         """Lower-cased string leaves of an event payload, for observable matching."""
         if event_id not in self._event_text:
             record = self._events.get(event_id)
-            self._event_text[event_id] = "\n".join(_string_leaves(record["payload"])).lower() if record else ""
+            text = "\n".join(_string_leaves(record["payload"])).lower() if record else ""
+            # Defanged indicators ("195[.]2[.]70[.]38") match their plain form.
+            self._event_text[event_id] = text.replace("[.]", ".").replace("[:]", ":")
         return self._event_text[event_id]
 
     def capsule(self, capsule_id: str) -> Capsule | None:
@@ -152,12 +174,17 @@ class EvidenceLedger:
     def decisions(self) -> list[dict]:
         return [entry["record"] for entry in self._journal if entry["type"] == "decision"]
 
+    def claim_verdicts(self, capsule_id: str | None = None) -> list[dict]:
+        records = [entry["record"] for entry in self._journal if entry["type"] == "claim_verdict"]
+        return [r for r in records if capsule_id is None or r["ref"].split("#")[0] == capsule_id]
+
     def counts(self) -> dict:
         return {
             "events": len(self._events),
             "artifacts": len(self._artifacts),
             "capsules": len(self._capsules),
             "decisions": len(self.decisions()),
+            "claim_verdicts": len(self.claim_verdicts()),
         }
 
     # ---------- persistence ----------
@@ -192,4 +219,6 @@ class EvidenceLedger:
                     ledger.record_decision(
                         record["capsule_id"], record["to"], record["actor"], record["violations"], record["detail"]
                     )
+                elif entry["type"] == "claim_verdict":
+                    ledger.record_claim_verdict(record["ref"], record["verdict"], record["actor"], record["detail"])
         return ledger

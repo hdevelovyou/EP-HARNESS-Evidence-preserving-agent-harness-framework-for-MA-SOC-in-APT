@@ -86,6 +86,31 @@ def claim_flow(capsules: list[Capsule]) -> dict:
     return {edge: dict(counts) for edge, counts in edges.items()}
 
 
+def semantic_summary(ledger) -> dict:
+    """Claim verdicts recorded by semantic review (latest verdict per claim).
+
+    unsupported_claim_rate = (UNRELATED + INSUFFICIENT + CONTRADICTED) / checked,
+    where checked excludes NOT_APPLICABLE claims. irrelevant_citation_rate =
+    cited events judged unrelated to their claim / all cited events checked.
+    """
+    latest = {}
+    for record in ledger.claim_verdicts():
+        latest[record["ref"]] = record
+    counts = Counter(r["verdict"] for r in latest.values())
+    by_layer = Counter(f"{r['detail'].get('decided_by', '?')}:{r['verdict']}" for r in latest.values())
+    checked = sum(n for verdict, n in counts.items() if verdict != "NOT_APPLICABLE")
+    unsupported = counts["UNRELATED"] + counts["INSUFFICIENT"] + counts["CONTRADICTED"]
+    relevant = sum(len(r["detail"].get("relevant_events", [])) for r in latest.values())
+    irrelevant = sum(len(r["detail"].get("irrelevant_events", [])) for r in latest.values())
+    return {
+        "claims": len(latest),
+        "verdicts": dict(counts),
+        "by_layer": dict(by_layer),
+        "unsupported_claim_rate": unsupported / checked if checked else None,
+        "irrelevant_citation_rate": irrelevant / (relevant + irrelevant) if relevant + irrelevant else None,
+    }
+
+
 def gate_outcomes(results: list[GateResult]) -> dict:
     statuses = Counter(r.status for r in results)
     codes = Counter(v.code for r in results for v in r.violations)

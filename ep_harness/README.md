@@ -17,7 +17,17 @@ ep_harness/
   harness.json       Default manifest
   adapters/masoc.py  Reads MA-SOC evidence_store.json + soc_hunt_results.json
   inline.py          Inline gate between agents in main.py (ENABLE_CONTRACT_GATE=1)
-  claim_parser.py    Reads the ```evidence_claims block agents append (ENABLE_CITED_CLAIMS=1)
+  claim_parser.py    Reads (and repairs) the ```evidence_claims block agents append (ENABLE_CITED_CLAIMS=1)
+  evidence_cards.py  ID-first index of a task's events that the Hunter picks evidence from
+  policy.py          Adaptive Evidence-Triggered Policy: signals + budget -> action (POLICY_MODE=adaptive)
+  policy_runner.py   Runs one task under the policy (filter, revise, rerun, review, stop)
+  label_guard.py     Masks ATT&CK technique IDs before the runtime; restores paths for post-seal IOC scoring
+  claim_dataset.py   Labelled claim-evidence set built from masked S07/S16/S23 events
+  claim_eval.py      Scores Reference Validity, Provenance, Semantic Support, Unsupported Claim Rate on it
+  measurement.py     Same post-run instrument for every configuration (ech_measurement.json)
+  experiments.py     Configuration ladder (Structured Capsule baseline -> full EP-HARNESS) x scenarios x repeats
+  semantic.py        Semantic evidence verification per claim: rules + one judge call (ENABLE_SEMANTIC_VERIFIER=1)
+  semantic_bench.py  Synthetic perturbation benchmark for the semantic rules
   cli.py             `audit` command
 ```
 
@@ -32,6 +42,12 @@ Tests (no pytest needed): `python tests/run_tests.py`
 
 Inline mode: `ENABLE_CONTRACT_GATE=1 python main.py ...`; see `docs/ep_harness/inline_contract_gate.md`.
 Agent-cited claims: add `ENABLE_CITED_CLAIMS=1`; see `docs/ep_harness/cited_evidence_claims.md`.
+Semantic evidence verification: add `ENABLE_SEMANTIC_VERIFIER=1`; see `docs/ep_harness/semantic_evidence_verification.md`.
+Adaptive policy: add `POLICY_MODE=adaptive`; see `docs/ep_harness/adaptive_policy.md`.
+Label guard (always on) and model-free preflight: `python -m ep_harness.cli preflight --scenario S23 --masoc-repo .`;
+see `docs/ep_harness/label_guard.md`.
+Metric validity: `python -m ep_harness.claim_eval evaluate --scenario S07`; see `docs/ep_harness/claim_evidence_dataset.md`.
+Experiments: `python -m ep_harness.experiments plan`; see `docs/ep_harness/experiment_design.md`.
 
 ## Gate decisions
 

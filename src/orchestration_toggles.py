@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 _TRUE_VALUES = {"1", "true", "yes", "on", "enabled"}
 _FALSE_VALUES = {"0", "false", "no", "off", "disabled"}
 _VALID_POLICY_MODES = {"fixed", "always_review", "adaptive"}
+_VALID_GATE_MODES = {"inline", "shadow"}
 
 
 def _env_toggle(name, default=True):
@@ -37,16 +38,31 @@ def _env_policy_mode(name="POLICY_MODE", default="fixed"):
     )
 
 
+def _env_gate_mode(name="CONTRACT_GATE_MODE", default="inline"):
+    raw_value = os.getenv(name)
+    if raw_value is None or not raw_value.strip():
+        return default
+    normalized = raw_value.strip().lower()
+    if normalized in _VALID_GATE_MODES:
+        return normalized
+    raise ValueError(f"{name} must be one of {sorted(_VALID_GATE_MODES)}; received {raw_value!r}.")
+
+
 @dataclass(frozen=True)
 class OrchestrationToggles:
     dag_orchestrator: bool = True
     ioc_curator: bool = True
     ttp_relations_graph: bool = True
     mitre_mapper: bool = True
-    # EP-HARNESS: inline Contract Gate (ep_harness.inline) and agent-cited evidence claims;
-    # the others are still placeholders
+    # EP-HARNESS: inline Contract Gate (ep_harness.inline), agent-cited evidence claims and
+    # semantic evidence verification (ep_harness.semantic); the others are still placeholders
     enable_contract_gate: bool = False
+    # inline = the gate blocks and filters; shadow = capsules are built and recorded but nothing is
+    # enforced (the Structured Capsule baseline)
+    contract_gate_mode: str = "inline"
     enable_cited_claims: bool = False
+    # Evidence cards before the task view (cited mode); off = the capsule format without that guidance
+    enable_evidence_cards: bool = True
     enable_semantic_verifier: bool = False
     policy_mode: str = "fixed"
     enable_output_guardrail: bool = False
@@ -63,7 +79,9 @@ def load_orchestration_toggles():
         ttp_relations_graph=_env_toggle("ENABLE_TTP_RELATIONS_GRAPH", True),
         mitre_mapper=_env_toggle("ENABLE_MITRE_MAPPER", True),
         enable_contract_gate=_env_toggle("ENABLE_CONTRACT_GATE", False),
+        contract_gate_mode=_env_gate_mode("CONTRACT_GATE_MODE", "inline"),
         enable_cited_claims=_env_toggle("ENABLE_CITED_CLAIMS", False),
+        enable_evidence_cards=_env_toggle("ENABLE_EVIDENCE_CARDS", True),
         enable_semantic_verifier=_env_toggle("ENABLE_SEMANTIC_VERIFIER", False),
         policy_mode=_env_policy_mode("POLICY_MODE", "fixed"),
         enable_output_guardrail=_env_toggle("ENABLE_OUTPUT_GUARDRAIL", False),
@@ -71,6 +89,19 @@ def load_orchestration_toggles():
     if toggles.enable_cited_claims and not toggles.enable_contract_gate:
         # The claims block is only parsed and checked by the inline gate.
         raise ValueError("ENABLE_CITED_CLAIMS=1 requires ENABLE_CONTRACT_GATE=1.")
+    if toggles.enable_semantic_verifier and not toggles.enable_contract_gate:
+        # Semantic review runs on capsules the inline gate has already accepted.
+        raise ValueError("ENABLE_SEMANTIC_VERIFIER=1 requires ENABLE_CONTRACT_GATE=1.")
+    if toggles.policy_mode != "fixed" and not toggles.enable_contract_gate:
+        # The policy decides from gate violations and semantic verdicts.
+        raise ValueError(f"POLICY_MODE={toggles.policy_mode} requires ENABLE_CONTRACT_GATE=1.")
+    if toggles.contract_gate_mode == "shadow" and (
+        toggles.enable_semantic_verifier or toggles.policy_mode != "fixed"
+    ):
+        # Shadow enforces nothing; semantic review and the policy act on what the gate enforces.
+        raise ValueError(
+            "CONTRACT_GATE_MODE=shadow cannot be combined with ENABLE_SEMANTIC_VERIFIER=1 or POLICY_MODE!=fixed."
+        )
     return toggles
 
 

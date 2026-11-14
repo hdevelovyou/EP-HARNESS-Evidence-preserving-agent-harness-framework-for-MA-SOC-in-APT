@@ -19,16 +19,16 @@ from ep_harness.inline import InlineECH
 from test_inline_gate import REPO, hunter_output, stubbed_main
 
 T7_TOOLS = ["ner_tool", "rex_tool", "sum_tool"]
-GOOD_CLAIM = {"id": "c1", "text": "dfg.exe on WS-FIN-014 opened an egress connection from 10.10.12.110",
-              "level": "OBSERVED", "event_ids": ["event-28"], "tools": ["rex_tool"],
-              "observables": ["dfg.exe", "10.10.12.110"]}
+GOOD_CLAIM = {"id": "c1", "text": "csc.exe created the file tmseiddy.dll in the user's temp folder",
+              "level": "OBSERVED", "event_ids": ["event-9"], "tools": ["rex_tool"],
+              "observables": ["csc.exe", "tmseiddy.dll"]}
 
 
 def block(records):
     return f"```evidence_claims\n{json.dumps(records)}\n```"
 
 
-def cited_output(records, tools=T7_TOOLS, narrative="Egress connection from the finance workstation."):
+def cited_output(records, tools=T7_TOOLS, narrative="The C# compiler wrote a DLL to the temp folder."):
     return hunter_output(f"{narrative}\n\n{block(records)}", tools)
 
 
@@ -86,7 +86,7 @@ def test_cited_finding_is_accepted_with_tool_artifacts(evidence_store):
     outcome = ech.hunter_handoff("T7", cited_output([GOOD_CLAIM]))
     assert outcome.accepted, outcome.violations
     claim = ech.ledger.capsule(outcome.capsule_id).claims[0]
-    assert claim.lineage == "cited" and claim.event_ids == ("event-28",)
+    assert claim.lineage == "cited" and claim.event_ids == ("event-9",)
     assert claim.artifact_ids[0].startswith("tool:T7:rex_tool:")
 
 
@@ -99,14 +99,14 @@ def test_cited_tool_that_never_ran_is_rejected(evidence_store):
 
 def test_missing_claims_block_is_rejected_with_format_feedback(evidence_store):
     ech = ech_for(evidence_store)
-    outcome = ech.hunter_handoff("T7", hunter_output("Egress from dfg.exe on WS-FIN-014.", T7_TOOLS))
+    outcome = ech.hunter_handoff("T7", hunter_output("csc.exe wrote tmseiddy.dll.", T7_TOOLS))
     assert outcome.status == "REJECTED" and outcome.retryable
     assert "[format] no ```evidence_claims block found" in outcome.feedback
 
 
 def test_paraphrased_observable_requires_retry(evidence_store):
     ech = ech_for(evidence_store)
-    outcome = ech.hunter_handoff("T7", cited_output([dict(GOOD_CLAIM, observables=["dfg malware"])]))
+    outcome = ech.hunter_handoff("T7", cited_output([dict(GOOD_CLAIM, observables=["csc malware"])]))
     assert outcome.status == "RETRY_REQUIRED"
     assert {v["code"] for v in outcome.violations} == {"observable_not_in_evidence"}
 
@@ -120,11 +120,11 @@ def test_analysis_cites_verified_refs_and_blocked_lines_are_withheld(evidence_st
 
     text = (
         "## Findings\n"
-        "dfg.exe beacons to an external host [c1]\n"
+        "csc.exe compiled a payload DLL [c1]\n"
         "The actor moved to the domain controller [c2]\n"
         "Untagged context line.\n"
         + block([
-            {"id": "c1", "text": "dfg.exe beacons to an external host", "level": "INFERRED", "parent_claims": refs},
+            {"id": "c1", "text": "csc.exe compiled a payload DLL", "level": "INFERRED", "parent_claims": refs},
             {"id": "c2", "text": "Lateral movement to the DC", "level": "OBSERVED", "event_ids": ["event-9999"]},
         ])
     )
@@ -132,7 +132,7 @@ def test_analysis_cites_verified_refs_and_blocked_lines_are_withheld(evidence_st
     assert outcome.status == "REJECTED"
     assert [v["claim_index"] for v in outcome.violations] == [1]
     for_reporter = ech.analysis_for_reporter(text, outcome)
-    assert for_reporter == "## Findings\ndfg.exe beacons to an external host\nUntagged context line."
+    assert for_reporter == "## Findings\ncsc.exe compiled a payload DLL\nUntagged context line."
     assert ech.handoffs[-1]["withheld_claims"] == [f"{outcome.capsule_id}#c2"]
 
 
@@ -140,10 +140,10 @@ def test_accepted_analysis_reaches_the_reporter_without_block_or_tags(evidence_s
     ech = ech_for(evidence_store)
     verified_t7(ech)
     claim = {"id": "c1", "text": "beaconing", "level": "INFERRED", "parent_claims": ["CAP-T7-VERIFIED-a1#c1"]}
-    text = f"dfg.exe beacons out [c1]\n{block([claim])}"
+    text = f"csc.exe compiled a DLL [c1]\n{block([claim])}"
     outcome = ech.analyst_handoff(text)
     assert outcome.accepted, outcome.violations
-    assert ech.analysis_for_reporter(text, outcome) == "dfg.exe beacons out"
+    assert ech.analysis_for_reporter(text, outcome) == "csc.exe compiled a DLL"
 
 
 # ------------------------------------------------------------ configuration and prompts
@@ -181,7 +181,7 @@ def test_main_cited_mode_end_to_end(tmp_path):
     calls = {"verifier": 0, "analyst_inputs": [], "reporter": []}
     analysis = (
         "## Findings\n"
-        "dfg.exe beacons to an external host [c1]\n"
+        "csc.exe compiled a payload DLL [c1]\n"
         "The actor moved to the domain controller [c2]\n"
         + block([
             {"id": "c1", "text": "beaconing", "level": "INFERRED", "parent_claims": ["CAP-T7-VERIFIED-a1#c1"]},
@@ -212,7 +212,7 @@ def test_main_cited_mode_end_to_end(tmp_path):
             calls["reporter"].append(analysis_text)
             return f"# Final report\n{analysis_text}"
 
-    raw = (REPO / "datasets" / "CobaltStrike_Lockbit" / "artifacts.json").read_text(encoding="utf-8")
+    raw = (REPO / "extracted_scenarios" / "S23_telemetry.json").read_text(encoding="utf-8")
     with stubbed_main(tmp_path, gate_enabled=True, cited=True) as main:
         main.CoordinatorAgent, main.HunterAgent, main.VerifierAgent = Coordinator, Hunter, Verifier
         main.AnalystAgent, main.ReporterAgent = Analyst, Reporter
@@ -226,6 +226,6 @@ def test_main_cited_mode_end_to_end(tmp_path):
 
     assert len(calls["analyst_inputs"]) == 2  # one retry with gate feedback
     assert "CONTRACT GATE" in calls["analyst_inputs"][1][1]
-    assert calls["reporter"] == ["## Findings\ndfg.exe beacons to an external host"]
+    assert calls["reporter"] == ["## Findings\ncsc.exe compiled a payload DLL"]
     assert bundle["ech_audit"]["claim_source"] == "cited"
     assert (Path(tmp_path) / bundle["run_dir"] / "analyst_result.md").read_text(encoding="utf-8") == analysis

@@ -74,7 +74,8 @@
           "reporter->output"
         ],
         "analyst_retries_env": "CONTRACT_GATE_ANALYST_RETRIES",
-        "claim_source_env": "ENABLE_CITED_CLAIMS"
+        "claim_source_env": "ENABLE_CITED_CLAIMS",
+        "mode_env": "CONTRACT_GATE_MODE (inline|shadow)"
       }
     },
     {
@@ -88,7 +89,129 @@
           "hunter",
           "analyst"
         ],
-        "toggle": "ENABLE_CITED_CLAIMS"
+        "toggle": "ENABLE_CITED_CLAIMS",
+        "format_repair": true,
+        "auto_tag_threshold": 0.6
+      }
+    },
+    {
+      "name": "semantic_evidence_verifier",
+      "category": "hooks_middleware",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "toggle": "ENABLE_SEMANTIC_VERIFIER",
+        "requires": "ENABLE_CONTRACT_GATE",
+        "verdicts": [
+          "SUPPORTED",
+          "INSUFFICIENT",
+          "UNRELATED",
+          "CONTRADICTED",
+          "NOT_APPLICABLE"
+        ],
+        "layers": [
+          "rules",
+          "judge"
+        ],
+        "trivial_df": 0.3,
+        "time_tolerance_min": 10
+      }
+    },
+    {
+      "name": "evidence_cards",
+      "category": "system_prompts",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "toggle": "ENABLE_EVIDENCE_CARDS (with ENABLE_CITED_CLAIMS)",
+        "agent": "hunter",
+        "placement": "before_task_view"
+      }
+    },
+    {
+      "name": "adaptive_policy",
+      "category": "orchestration",
+      "version": "adaptive-1",
+      "enabled": true,
+      "config": {
+        "toggle": "POLICY_MODE",
+        "modes": [
+          "fixed",
+          "adaptive",
+          "always_review"
+        ],
+        "requires": "ENABLE_CONTRACT_GATE",
+        "budget_env": [
+          "POLICY_TASK_RETRIES",
+          "POLICY_REVIEW_BUDGET",
+          "POLICY_LLM_CALL_BUDGET"
+        ],
+        "defaults": {
+          "task_retries": 1,
+          "reviews": 5,
+          "llm_calls": 0
+        }
+      }
+    },
+    {
+      "name": "label_guard",
+      "category": "trust_boundary",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "always_on": true,
+        "pattern": "T\\d{4}(\\.\\d{3})?",
+        "pseudonym": "XTIDnn",
+        "markers_env": "MASK_SIMULATION_MARKERS",
+        "unmask": "path-like tokens, post-seal IOC scoring only",
+        "markers_default": true
+      }
+    },
+    {
+      "name": "claim_evidence_dataset",
+      "category": "observability_evaluation",
+      "version": "claim-evidence-1",
+      "enabled": true,
+      "config": {
+        "data": "benchmarks/claim_evidence",
+        "splits": {
+          "S16": "dev",
+          "S23": "dev",
+          "S07": "test"
+        },
+        "label_source": "construction",
+        "human_check": "annotation sheets + Cohen's kappa"
+      }
+    },
+    {
+      "name": "uniform_measurement",
+      "category": "observability_evaluation",
+      "version": "measure-1",
+      "enabled": true,
+      "config": {
+        "output": "runs/<id>/ech_measurement.json",
+        "instrument": "references, provenance, semantic rules (no judge)"
+      }
+    },
+    {
+      "name": "experiment_matrix",
+      "category": "observability_evaluation",
+      "version": "0.2.0",
+      "enabled": true,
+      "config": {
+        "configs": [
+          "B0_masoc",
+          "B1_structured_capsule",
+          "B1c_structured_capsule_cards",
+          "L1_gate",
+          "L2_semantic",
+          "Full_ep_harness"
+        ],
+        "baseline": "B1_structured_capsule",
+        "budget": {
+          "MASOC_MAX_RETRIES": 1,
+          "POLICY_TASK_RETRIES": 1
+        }
       }
     }
   ]

@@ -1,150 +1,140 @@
-# Hướng Dẫn Chạy Thực Nghiệm Baseline: MA-SOC với Structured Capsule Đơn Thuần (Non-Semantic Verified, Non-Adaptive)
+# Hướng dẫn chạy baseline Structured Capsule (B1) với Gemma 4 26B
 
-Tài liệu này hướng dẫn chi tiết cách thiết lập biến môi trường (environment toggles) và chạy thực nghiệm **Baseline chính** cho công trình **EP-HARNESS**:
-- **Cấu hình hệ thống:** MA-SOC kết hợp **Structured Evidence Capsule (v0.2)** và **Inline Contract Gate** kiểm tra cấu trúc/tham chiếu tất định (`C1–C4`, `R1–R4`).
-- **Không Semantic Verified:** Tắt lớp kiểm chứng ngữ nghĩa nâng cao (`ENABLE_SEMANTIC_VERIFIER=false`, `ENABLE_OUTPUT_GUARDRAIL=false`, `semantic_check="not_performed"`).
-- **Không Adaptive:** Chế độ điều phối cố định (`POLICY_MODE=fixed`), không kích hoạt adaptive evidence-triggered policy.
-- **Model đồng nhất (Homogeneous LLM):** Toàn bộ 8 thành phần Agent/Tool đều sử dụng `models/gemma-4-26b-a4b-it` (`gemma-4-26b-it`) qua Google GenAI API.
+Baseline chính của EP-HARNESS là **`B1_structured_capsule`**: MA-SOC được yêu cầu xuất Evidence Capsule v0.2 và khối
+`evidence_claims` có trích dẫn, nhưng harness **chỉ ghi lại, không can thiệp**. Như vậy, khoảng cách giữa B1 và
+EP-HARNESS hoàn chỉnh là phần đóng góp của harness (kiểm, chặn, sửa, điều phối), không lẫn với lợi ích của việc
+xuất claim có cấu trúc. Thiết kế đầy đủ: [`experiment_design.md`](experiment_design.md).
 
----
+| | B1 (baseline) | Không phải baseline |
+|---|---|---|
+| Capsule + `evidence_claims` | có | |
+| Contract Gate | **shadow**: dựng capsule, ghi phán quyết C1–C4/R1–R4, **không chặn, không lọc** | inline (chặn) là `L1_gate` |
+| Thẻ bằng chứng | **tắt** | bật là `B1c_structured_capsule_cards` |
+| Semantic review | tắt | `L2_semantic` |
+| Policy | `fixed` (vòng thử lại MA-SOC, 1 lần) | `adaptive` là `Full_ep_harness` |
 
-## 1. Kết Quả Kiểm Tra Model (`model_check.py`) & Cấu Hình LLM Đồng Nhất
-
-Kết quả chạy `py -3.11 model_check.py` xác nhận model **Gemma 4 26B IT** trên Google API có định danh chính thức là `models/gemma-4-26b-a4b-it` và đang ở trạng thái **`READY (Limit > 0)`**.
-
-Hệ thống đã được cập nhật tại [`agents/llm_config.py`](../../agents/llm_config.py), [`.env`](../../.env) và [`.env.example`](../../.env.example) để đưa toàn bộ 8 vai trò về cùng model:
-- `coordinator` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `hunter` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `verifier` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `analyst` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `reporter` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `tools` (`shared_llm`) $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `debate_feedback` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-- `debate_judge` $\rightarrow$ `google` / `models/gemma-4-26b-a4b-it`
-
-*(Lưu ý: [`agents/llm_config.py`](../../agents/llm_config.py) đã hỗ trợ alias tự động: nếu bạn truyền `gemma-4-26b-it` hoặc `models/gemma-4-26b-it`, hệ thống tự động ánh xạ về `models/gemma-4-26b-a4b-it`).*
+> Lưu ý: chỉ đặt `ENABLE_CONTRACT_GATE=true` + `ENABLE_CITED_CLAIMS=true` mà không đặt `CONTRACT_GATE_MODE=shadow`
+> thì gate chặn thật và thẻ bằng chứng bật mặc định. Cấu hình đó là **`L1_gate`**, không phải baseline.
 
 ---
 
-## 2. Rà Soát Các Biến Môi Trường (Environment Toggles) Cho Cấu Hình Baseline
+## 1. Model
 
-Các biến điều khiển được nạp từ [`src/orchestration_toggles.py`](../../src/orchestration_toggles.py), [`agents/llm_config.py`](../../agents/llm_config.py), [`prompts/agent_prompts.py`](../../prompts/agent_prompts.py) và [`main.py`](../../main.py):
+Kiểm tra bằng `model_check.py` cho thấy Gemma 4 26B IT trên Google API có định danh `models/gemma-4-26b-a4b-it` và
+đang ở trạng thái `READY (Limit > 0)`. `agents/llm_config.py` mặc định dùng model này cho cả 8 vai trò
+(coordinator, hunter, verifier, analyst, reporter, tools, debate_feedback, debate_judge). Alias `gemma-4-26b-it`
+và `models/gemma-4-26b-it` được tự ánh xạ về `models/gemma-4-26b-a4b-it`.
 
-### 2.1. Nhóm biến EP-HARNESS (Structured Capsule, Non-Semantic, Non-Adaptive)
-
-| Biến môi trường | Giá trị chuẩn Baseline | Ý nghĩa trong thực nghiệm Baseline |
-| :--- | :--- | :--- |
-| `ENABLE_CONTRACT_GATE` | `true` (`1`) | Bật `InlineECH` (Inline Contract Gate) tại 3 handoff chính (`Hunter -> Verifier`, `Verifier -> Analyst`, `Analyst -> Reporter`) và ghi nhận tại `Reporter -> output`. Mọi dữ liệu đi qua handoff đều được đóng gói thành **Evidence Capsule v0.2** và kiểm tra quy tắc hình thức/tham chiếu tất định (`C1–C4`, `R1–R4`). |
-| `ENABLE_CITED_CLAIMS` | `true` (`1`) | Bắt buộc `Hunter` và `Analyst` sinh khối cấu trúc ````evidence_claims` trích dẫn trực tiếp `event_ids`, `tools`, `parent_claims`, `observables`, `level` (`OBSERVED`/`INFERRED`/`HYPOTHESIS`) và gắn thẻ `[cN]`. *(Nếu muốn chạy biến thể capsule tự suy diễn từ free-text mà không ép prompt sinh JSON block, đặt `ENABLE_CITED_CLAIMS=false`).* |
-| `CONTRACT_GATE_ANALYST_RETRIES` | `1` | Số lần cho phép `Analyst` retry khi capsule `ANALYSIS` bị chặn bởi lỗi claim-level hoặc thiếu khối `evidence_claims` trước khi lọc bỏ các dòng vi phạm. |
-| `ENABLE_SEMANTIC_VERIFIER` | `false` (`0`) | **Tắt** kiểm chứng ngữ nghĩa sâu (Semantic Evidence Verification). Contract Gate chỉ kiểm tra tính hợp lệ của schema và tham chiếu (`semantic_check: "not_performed"`). |
-| `POLICY_MODE` | `fixed` | **Tắt** điều phối thích nghi (`adaptive`). Giữ luồng thực thi và ngân sách retry cố định (`fixed`). |
-| `ENABLE_OUTPUT_GUARDRAIL` | `false` (`0`) | **Tắt** Output Evidence Guardrail ở đầu ra cuối. |
-
-### 2.2. Nhóm biến tầng điều phối MA-SOC (Core Orchestration Toggles)
-
-| Biến môi trường | Giá trị chuẩn Baseline | Ý nghĩa |
-| :--- | :--- | :--- |
-| `COLLABORATION_STRATEGY` | `hierarchical` | Kiến trúc cộng tác phân cấp chuẩn của MA-SOC (`Coordinator -> Hunter <-> Verifier -> Analyst -> Reporter`). |
-| `PROMPT_TECHNIQUE` | `role_based_zero_shot` | Kỹ thuật prompt mặc định (có thể đổi sang `chain_of_thought` hoặc `example_based_fewshot` nhưng cần giữ cố định giữa các cấu hình so sánh). |
-| `ENABLE_DAG_ORCHESTRATOR` | `true` | Bật mở rộng phụ thuộc và sắp xếp topo cho kế hoạch task CyberTeam DAG. |
-| `ENABLE_IOC_CURATOR` | `true` | Bật bộ lọc và chuẩn hóa IOC (`IOCCurator`) trước khi đưa vào `Reporter`. |
-| `ENABLE_TTP_RELATIONS_GRAPH` | `true` | Bật đồ thị quan hệ MITRE ATT&CK hỗ trợ suy luận ngang cho `Analyst`. |
-| `ENABLE_MITRE_MAPPER` | `true` | Bật truy xuất ứng viên MITRE ATT&CK cục bộ (`MitreMapper`) trước bước `Reporter`. |
-| `TASK_EVENT_LIMIT` | `120` | Giới hạn số lượng sự kiện telemetry tối đa truyền vào mỗi task view. |
-| `ENABLE_LLM_REASONING_JUDGE` | `false` | Đánh giá hậu kiểm (`ReasoningEvaluator`) dùng bộ chấm điểm tất định (rule-based), không gọi OpenAI judge bên ngoài. |
-
----
-
-## 3. Thiết Lập Nhanh Trong PowerShell & Lệnh Chạy Thực Nghiệm
-
-### Bước 1: Thiết lập biến môi trường cho phiên PowerShell hiện tại
-
-Copy và chạy khối lệnh dưới đây trong PowerShell tại thư mục gốc của project:
+Đổi model cho **mọi** agent chỉ cần hai biến:
 
 ```powershell
-# 1. Cấu hình đồng nhất tất cả Agent về Gemma-4-26B-IT
-$env:AGENT_LLM_PROVIDER="google"
-$env:AGENT_MODEL="models/gemma-4-26b-a4b-it"
-$env:AGENT_MODEL_TIMEOUT_SECONDS="300"
-
-# 2. Cấu hình chiến lược cộng tác & kỹ thuật Prompt MA-SOC
-$env:COLLABORATION_STRATEGY="hierarchical"
-$env:PROMPT_TECHNIQUE="role_based_zero_shot"
-$env:TASK_EVENT_LIMIT="120"
-
-# 3. Các thành phần điều phối cốt lõi của MA-SOC
-$env:ENABLE_DAG_ORCHESTRATOR="true"
-$env:ENABLE_IOC_CURATOR="true"
-$env:ENABLE_TTP_RELATIONS_GRAPH="true"
-$env:ENABLE_MITRE_MAPPER="true"
-
-# 4. Cấu hình Baseline EP-HARNESS: Structured Capsule đơn thuần (Không Semantic Verified, Không Adaptive)
-$env:ENABLE_CONTRACT_GATE="true"
-$env:ENABLE_CITED_CLAIMS="true"
-$env:CONTRACT_GATE_ANALYST_RETRIES="1"
-$env:ENABLE_SEMANTIC_VERIFIER="false"
-$env:POLICY_MODE="fixed"
-$env:ENABLE_OUTPUT_GUARDRAIL="false"
-
-# 5. Đảm bảo bộ chấm hậu kiểm độc lập không phụ thuộc LLM ngoài
-$env:ENABLE_LLM_REASONING_JUDGE="false"
+$env:AGENT_LLM_PROVIDER = "google"
+$env:AGENT_MODEL = "models/gemma-4-26b-a4b-it"
 ```
 
-### Bước 2: Kiểm tra danh sách kịch bản (Scenarios) hiện có
-
-```powershell
-py -3.11 main.py --list-scenarios
-```
-
-Các kịch bản có sẵn bao gồm:
-- **Extracted APT Scenarios (`extracted_scenarios/`):** `S07`, `S16`, `S23`
-- **Legacy Datasets (`datasets/`):** `CobaltStrike_Lockbit`, `Lynx_Ransomware`
-
-### Bước 3: Chạy thực nghiệm trên từng kịch bản
-
-- **Chạy trên kịch bản `S23` (mặc định, nhẹ để smoke test & chạy nhanh):**
-  ```powershell
-  py -3.11 main.py --scenario S23 --strategy hierarchical --run-name S23_Baseline_StructuredCapsule
-  ```
-
-- **Chạy trên kịch bản `S07` hoặc `S16`:**
-  ```powershell
-  py -3.11 main.py --scenario S07 --strategy hierarchical --run-name S07_Baseline_StructuredCapsule
-  py -3.11 main.py --scenario S16 --strategy hierarchical --run-name S16_Baseline_StructuredCapsule
-  ```
-
-- **Chạy trên tập dữ liệu `CobaltStrike_Lockbit` hoặc `Lynx_Ransomware`:**
-  ```powershell
-  py -3.11 main.py --scenario CobaltStrike_Lockbit --strategy hierarchical --run-name CS_Lockbit_Baseline_StructuredCapsule
-  py -3.11 main.py --scenario Lynx_Ransomware --strategy hierarchical --run-name Lynx_Baseline_StructuredCapsule
-  ```
-
-- **Chạy lặp 5 lần (Multi-run Benchmark theo yêu cầu KLTN):**
-  ```powershell
-  1..5 | ForEach-Object {
-      Write-Host "=== Running Iteration $_ ==="
-      py -3.11 main.py --scenario S23 --strategy hierarchical --run-name "S23_Baseline_Capsule_Run$_"
-  }
-  ```
+Không đặt `HUNTER_MODEL`, `VERIFIER_MODEL`... trong `.env` trừ khi cố ý thử từng vai trò: biến theo vai trò được ưu
+tiên hơn `AGENT_MODEL`, nên khi đổi model chung sẽ có agent không đổi theo.
 
 ---
 
-## 4. Kiểm Tra Artifacts Đầu Ra Sau Khi Chạy
+## 2. Biến môi trường của baseline
 
-Mỗi lần chạy sẽ sinh ra một thư mục độc lập tại `runs/<run_name>_<timestamp>/`. Để xác nhận cấu hình **Structured Capsule Baseline** đã hoạt động đúng, hãy kiểm tra các file sau trong thư mục run:
+### 2.1. EP-HARNESS
 
-1. `orchestration_config.json`:
-   - Xác nhận `"enable_contract_gate": true`, `"enable_cited_claims": true`, `"enable_semantic_verifier": false`, `"policy_mode": "fixed"`, `"enable_output_guardrail": false`.
-2. `ech_ledger.jsonl`:
-   - Sổ cái append-only lưu toàn bộ `event`, `artifact`, `capsule` (`FINDING`, `VERIFIED`, `ANALYSIS`, `REPORT`) và các `decision` của `contract_gate` / `verifier`.
-3. `ech_inline_audit.json`:
-   - Thống kê chi tiết của EP-HARNESS:
-     - `claim_source`: `"cited"`
-     - `summary.evidence_reference_validity`: Tỷ lệ tham chiếu hợp lệ.
-     - `summary.provenance_completeness`: Độ đầy đủ nguồn gốc bằng chứng.
-     - `summary.claim_flow`: Thống kê bảo toàn / suy giảm / khuếch đại claim qua từng handoff (`carried`, `dropped_declared`, `lost_silently`, `escalated`, `downgraded`).
-     - `handoffs`: Danh sách quyết định (`ACCEPTED`, `RETRY_REQUIRED`, `REJECTED`) tại từng cạnh.
-4. `analyst_result.md` và `analyst_result_gated.md` *(nếu có claim bị chặn và lọc bỏ trước khi sang Reporter)*.
-5. `FINAL_REPORT_SOC.md`: Báo cáo SOC cuối cùng được niêm phong trước khi chạy Evaluator.
-6. `eval_report.json` và `reasoning_eval_report.json`: Kết quả chấm điểm Layer 1 (Entity Recall/Precision/F1), Layer 2 (MITRE TTPs & IOCs Weighted F1 / Jaccard) và Reasoning Quality.
+| Biến | Giá trị B1 | Ý nghĩa |
+| :--- | :--- | :--- |
+| `ENABLE_CONTRACT_GATE` | `true` | Dựng capsule tại các handoff Hunter→Verifier, Verifier→Analyst, Analyst→Reporter, Reporter→output |
+| `CONTRACT_GATE_MODE` | `shadow` | Chỉ ghi phán quyết; Verifier OK/FAIL quyết định như MA-SOC; Reporter nhận bài phân tích đã bỏ khối claim và thẻ `[cN]`, không bị giữ lại dòng nào |
+| `ENABLE_CITED_CLAIMS` | `true` | Hunter và Analyst xuất khối `evidence_claims` (`event_ids`, `tools`, `parent_claims`, `observables`, `level`) |
+| `ENABLE_EVIDENCE_CARDS` | `false` | Không đặt thẻ bằng chứng trước task view |
+| `ENABLE_SEMANTIC_VERIFIER` | `false` | Không có phán quyết ngữ nghĩa từng claim |
+| `POLICY_MODE` | `fixed` | Vòng thử lại cố định của MA-SOC |
+| `MASOC_MAX_RETRIES` | `1` | Một lần gọi lại, đúng paper MA-SOC; cùng ngân sách với `POLICY_TASK_RETRIES=1` |
+| `ENABLE_OUTPUT_GUARDRAIL` | `false` | Chưa có |
+
+`CONTRACT_GATE_ANALYST_RETRIES` chỉ có tác dụng ở chế độ `inline`; ở `shadow` không có gì bị chặn nên không dùng.
+Che nhãn (technique ID và dấu hiệu giả lập, `MASK_SIMULATION_MARKERS=1`) luôn bật ở mọi cấu hình.
+
+### 2.2. Tầng điều phối MA-SOC (giữ cố định giữa các cấu hình)
+
+| Biến | Giá trị | Ý nghĩa |
+| :--- | :--- | :--- |
+| `COLLABORATION_STRATEGY` | `hierarchical` | Debate không nằm trong ma trận thí nghiệm |
+| `PROMPT_TECHNIQUE` | `role_based_zero_shot` | Giữ cố định giữa các cấu hình |
+| `ENABLE_DAG_ORCHESTRATOR` | `true` | Mở rộng phụ thuộc và sắp xếp topo kế hoạch task |
+| `ENABLE_IOC_CURATOR` | `true` | Lọc, chuẩn hoá IOC trước Reporter |
+| `ENABLE_TTP_RELATIONS_GRAPH` | `true` | Đồ thị quan hệ ATT&CK cho Analyst |
+| `ENABLE_MITRE_MAPPER` | `true` | Ứng viên ATT&CK cục bộ trước Reporter |
+| `TASK_EVENT_LIMIT` | `120` | Số event tối đa trong mỗi task view |
+| `ENABLE_LLM_REASONING_JUDGE` | `false` | Chấm reasoning bằng luật, không gọi judge ngoài |
+
+---
+
+## 3. Chạy
+
+### Cách khuyến nghị: qua bộ chạy thí nghiệm
+
+Bộ chạy đặt **mọi** công tắc tường minh cho từng cấu hình, nên giá trị còn sót trong `.env` hay trong phiên
+PowerShell không làm lệch cấu hình.
+
+```powershell
+# Xem trước kế hoạch, không gọi model
+python -m ep_harness.experiments plan --configs B1_structured_capsule --scenarios S23 --repeats 1
+
+# Chạy thử nhỏ để đếm số lời gọi và thời gian (gọi model thật)
+python -m ep_harness.experiments run --configs B1_structured_capsule Full_ep_harness --scenarios S23 --repeats 2 --execute
+
+# Tổng hợp trung bình ± độ lệch chuẩn
+python -m ep_harness.experiments summarize --name <tên thí nghiệm>
+```
+
+### Chạy tay một lần
+
+```powershell
+$env:AGENT_LLM_PROVIDER = "google"
+$env:AGENT_MODEL = "models/gemma-4-26b-a4b-it"
+$env:COLLABORATION_STRATEGY = "hierarchical"
+$env:ENABLE_CONTRACT_GATE = "true"
+$env:CONTRACT_GATE_MODE = "shadow"
+$env:ENABLE_CITED_CLAIMS = "true"
+$env:ENABLE_EVIDENCE_CARDS = "false"
+$env:ENABLE_SEMANTIC_VERIFIER = "false"
+$env:POLICY_MODE = "fixed"
+$env:MASOC_MAX_RETRIES = "1"
+$env:ENABLE_OUTPUT_GUARDRAIL = "false"
+$env:ENABLE_LLM_REASONING_JUDGE = "false"
+
+python main.py --scenario S23 --strategy hierarchical --run-name S23_B1_structured_capsule
+```
+
+Kịch bản dùng trong thí nghiệm: `S07`, `S16`, `S23` (`extracted_scenarios/`). Hai bộ cũ trong `datasets/` không còn dùng.
+
+### Giới hạn của Gemini miễn phí
+
+Hạn mức gói miễn phí tính theo project, xem số thật trong Google AI Studio. Một run gồm nhiều lời gọi (Coordinator,
+mỗi task: Hunter theo số tool bắt buộc + 1 lời gọi kết luận, Verifier; rồi Analyst, Reporter), nên nên chạy thử nhỏ
+trước để đếm số lời gọi thật rồi mới lên lịch cho cả ma trận.
+
+Khi bị giới hạn theo phút (429), mọi agent tự chờ rồi gọi lại, không tính là một lần retry. Khi hết hạn mức ngày, run
+dừng (mã thoát 75) và bộ chạy thí nghiệm dừng theo; hôm sau chạy lại **đúng lệnh cũ với cùng `--name`**, các run đã
+xong được bỏ qua. Số lời gọi, token theo model và thời gian chờ nằm trong `eval_report.json` →
+`metadata.openai_metrics` (`llm_calls`, `by_model`, `rate_limit`).
+
+---
+
+## 4. Kiểm tra đầu ra
+
+Mỗi run ghi vào `runs/<run_name>_<timestamp>/`:
+
+1. `orchestration_config.json`: xác nhận `enable_contract_gate: true`, `contract_gate_mode: "shadow"`,
+   `enable_cited_claims: true`, `enable_evidence_cards: false`, `enable_semantic_verifier: false`,
+   `policy_mode: "fixed"`.
+2. `ech_ledger.jsonl`: sổ cái append-only (event, artifact, capsule FINDING/VERIFIED/ANALYSIS/REPORT, các quyết định).
+3. `ech_inline_audit.json`: phán quyết gate tại từng handoff. Ở shadow vẫn có `REJECTED` / `RETRY_REQUIRED` được
+   ghi lại, nhưng task không bị chặn.
+4. `ech_measurement.json`: **thước đo dùng chung cho mọi cấu hình** (Unsupported Claim Rate, Reference Validity,
+   Provenance, trích dẫn không liên quan ở finding, finding được chuyển tiếp, bài phân tích, báo cáo). So sánh giữa
+   các cấu hình dùng file này, không dùng `ech_inline_audit.json`.
+5. `label_mask.json`: các nhãn đã che trước runtime.
+6. `FINAL_REPORT_SOC.md`: báo cáo cuối, niêm phong trước khi chấm.
+7. `eval_report.json`, `reasoning_eval_report.json`: F1 TTP (chấm trên bản che), F1 IOC, reasoning, token và độ trễ.

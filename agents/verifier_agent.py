@@ -1,5 +1,7 @@
 from agents.llm_config import create_agent_llm
-from prompts import build_verifier_prompt
+import json
+
+from prompts import build_semantic_judge_messages, build_verifier_prompt
 
 
 class VerifierAgent:
@@ -19,3 +21,11 @@ class VerifierAgent:
             "log": raw_log,
         })
         return response.content
+
+    def judge_claims(self, task_description, items):
+        """One LLM call: claim-level verdicts for the claims the rule layer could not reject."""
+        messages = build_semantic_judge_messages(task_description, json.dumps(items, ensure_ascii=False, indent=2))
+        content = self.llm.invoke(messages).content
+        if isinstance(content, list):
+            content = "\n".join(str(part.get("text", "")) if isinstance(part, dict) else str(part) for part in content)
+        return str(content)
